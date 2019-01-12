@@ -19,7 +19,7 @@ where
     T: AsyncRead + AsyncWrite + Send + 'static,
     B: Payload,
 {
-    pub(crate) fn new(sender: conn::SendRequest<B>, conn: conn::Connection<T, B>) -> Self {
+    pub(super) fn new(sender: conn::SendRequest<B>, conn: conn::Connection<T, B>) -> Self {
         Connection { sender, conn }
     }
 }
@@ -38,11 +38,11 @@ where
     }
 
     fn poll_service(&mut self) -> Poll<(), Self::Error> {
-        self.conn.poll()
+        self.conn.poll_without_shutdown()
     }
 
     fn poll_close(&mut self) -> Poll<(), Self::Error> {
-        unimplemented!()
+        self.conn.poll()
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
