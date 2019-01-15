@@ -1,7 +1,7 @@
 use futures::Future;
 use hyper::client::connect::{Connect, Destination};
 use tokio_io::{AsyncRead, AsyncWrite};
-use tower_service::Service;
+// use tower_service::Service;
 
 pub trait ConnectService<A> {
     type Response: AsyncRead + AsyncWrite;
