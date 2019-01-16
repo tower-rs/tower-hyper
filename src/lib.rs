@@ -1,34 +1,34 @@
 mod client;
 mod util;
-use futures::{future, stream::Stream, Async, Future, Poll};
+use futures::{future, Async, Poll};
 use http::{Request, Response};
 use hyper::{
+    body::Payload,
+    client::connect::Connect as HyperConnect,
     client::{HttpConnector, ResponseFuture},
-    Body, Client as HyperClient, body::Payload
+    Body, Client as HyperClient,
 };
-use bytes::Bytes;
-use tower_service::Service;
 use tower_retry::Policy;
+use tower_service::Service;
 
 pub use self::client::{Connect, Connection};
 
-struct Client<C = HttpConnector, B = Body> {
-    inner: HyperClient<C, B>
+pub struct Client<C = HttpConnector, B = Body> {
+    inner: HyperClient<C, B>,
 }
 
-impl Default for Client<HttpConnector, Body> {
-    fn default() -> Self {
-        Self {
-            inner: HyperClient::new()
-        }
+impl<C, B> Client<C, B> {
+    fn new(inner: HyperClient<C, B>) -> Self {
+        Self { inner }
     }
 }
 
-impl <B>Service<Request<B>> for Client<B>
+impl<C, B> Service<Request<B>> for Client<C, B>
 where
-    Body: From<B>,
-    B: hyper::client::connect::Connect,
-    B: Payload + Send + Sync + 'static,
+    C: HyperConnect + Sync + 'static,
+    C::Transport: 'static,
+    C::Future: 'static,
+    B: Payload + Send + 'static,
     B::Data: Send,
 {
     type Response = Response<Body>;
@@ -41,13 +41,13 @@ where
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
         let (parts, body) = req.into_parts();
-        let req = Request::from_parts(parts, Body::from(body));
+        let req = Request::from_parts(parts, body.into());
         self.inner.request(req)
     }
 }
 
 #[derive(Clone)]
-struct RetryPolicy {
+pub struct RetryPolicy {
     attempts: u8,
 }
 
@@ -58,12 +58,16 @@ impl RetryPolicy {
 }
 
 impl<T> Policy<Request<T>, Response<Body>, hyper::Error> for RetryPolicy
-    where
-        T: Into<Body> + Clone,
+where
+    T: Into<Body> + Clone,
 {
     type Future = future::FutureResult<Self, ()>;
 
-    fn retry(&self, _: &Request<T>, result: Result<&Response<Body>, &hyper::Error>) -> Option<Self::Future> {
+    fn retry(
+        &self,
+        _: &Request<T>,
+        result: Result<&Response<Body>, &hyper::Error>,
+    ) -> Option<Self::Future> {
         if self.attempts == 0 {
             // We ran out of retries, hence us returning none.
             return None;
