@@ -11,6 +11,7 @@ hyper = "0.12"
 log = "0.4"
 tokio-io = "0.1"
 tower-service = { git = "https://github.com/tower-rs/tower" }
+tower-retry = { git = "https://github.com/tower-rs/tower" }
 tower-direct-service = { git = "https://github.com/tower-rs/tower" }
 tower-util = { git = "https://github.com/tower-rs/tower" }
 
