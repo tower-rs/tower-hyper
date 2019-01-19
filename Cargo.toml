@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 futures = "0.1"
 http = "0.1"
-hyper = "0.12"
+hyper = "0.12.21"
 log = "0.4"
 tokio-io = "0.1"
 tower-service = { git = "https://github.com/tower-rs/tower" }
@@ -17,4 +17,5 @@ tower-util = { git = "https://github.com/tower-rs/tower" }
 
 [dev-dependencies]
 tower-buffer = { git = "https://github.com/tower-rs/tower" }
+tokio-executor = "0.1"
 pretty_env_logger = "0.2.0"

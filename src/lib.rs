@@ -9,6 +9,6 @@
 
 mod client;
 mod retries;
-mod util;
+pub mod util;
 
 pub use self::client::{Client, Connect, Connection};
