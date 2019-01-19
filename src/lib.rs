@@ -11,4 +11,4 @@ mod client;
 mod retries;
 pub mod util;
 
-pub use self::client::{Client, Connect, Connection};
+pub use self::client::{Client, Connect, ConnectError, Connection};

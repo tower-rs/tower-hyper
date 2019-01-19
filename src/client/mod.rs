@@ -8,7 +8,7 @@
 mod connect;
 mod connection;
 
-pub use self::connect::Connect;
+pub use self::connect::{Connect, ConnectError};
 pub use self::connection::Connection;
 
 use futures::{Async, Poll};
