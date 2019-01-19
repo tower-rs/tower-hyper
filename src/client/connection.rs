@@ -5,6 +5,11 @@ use hyper::client::conn;
 use tokio_io::{AsyncRead, AsyncWrite};
 use tower_direct_service::DirectService;
 
+/// The connection provided from `hyper`
+///
+/// This provides an interface for `DirectService` that will
+/// drive the inner service via `poll_service` and can send
+/// requests via `call`.
 pub struct Connection<T, B>
 where
     T: AsyncRead + AsyncWrite + Send + 'static,

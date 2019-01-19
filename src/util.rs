@@ -3,6 +3,11 @@ use hyper::client::connect::{Connect, Destination};
 use tokio_io::{AsyncRead, AsyncWrite};
 // use tower_service::Service;
 
+/// The ConnectService trait is used to create transports
+///
+/// The goal of this service is to allow composable methods to creating
+/// `AsyncRead + AsyncWrite` transports. This could mean creating a TLS
+/// based connection or using some other method to authenticate the connection.
 pub trait ConnectService<A> {
     type Response: AsyncRead + AsyncWrite;
     type Error;

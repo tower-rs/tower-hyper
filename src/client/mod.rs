@@ -1,3 +1,10 @@
+//! The client module contains three main utiliteies client, connection
+//! and connect. Connection and Connect are designed to be used together
+//! where as Client is a thicker client designed to be used by itself. There
+//! is less control over driving the inner service compared to Connection. The
+//! other difference is that Connection is a lowerlevel connection, so there is no
+//! connection pooling etc, that is the job of the services that wrap it.
+
 mod connect;
 mod connection;
 
@@ -8,17 +15,21 @@ use futures::{Async, Poll};
 use http::{Request, Response};
 use hyper::{
     body::Payload, client::connect::Connect as HyperConnect, client::ResponseFuture, Body,
-    Client as HyperClient,
 };
 use tower_direct_service::DirectService;
 use tower_service::Service;
 
+/// The client wrapp for `hyper::Client`
+///
+/// The generics `C` and `B` are 1-1 with the generic
+/// types within `hyper::Client`.
 pub struct Client<C, B> {
-    inner: HyperClient<C, B>,
+    inner: hyper::Client<C, B>,
 }
 
 impl<C, B> Client<C, B> {
-    pub fn new(inner: HyperClient<C, B>) -> Self {
+    /// Create a new client from a `hyper::Client`
+    pub fn new(inner: hyper::Client<C, B>) -> Self {
         Self { inner }
     }
 }
@@ -35,21 +46,24 @@ where
     type Error = hyper::Error;
     type Future = ResponseFuture;
 
+    /// Poll the inner service, this always returns ready
     fn poll_service(&mut self) -> Poll<(), Self::Error> {
         Ok(Async::Ready(()))
     }
 
+    /// Poll this service to close, this always returns ready
     fn poll_close(&mut self) -> Poll<(), Self::Error> {
         Ok(Async::Ready(()))
     }
 
+    /// Poll to see if the service is ready, since `hyper::Client`
+    /// already handles this internally this will always return ready
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         Ok(Async::Ready(()))
     }
 
+    /// Send the sepcficied request to the inner `hyper::Client`
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        let (parts, body) = req.into_parts();
-        let req = Request::from_parts(parts, body.into());
         self.inner.request(req)
     }
 }
@@ -66,13 +80,14 @@ where
     type Error = hyper::Error;
     type Future = ResponseFuture;
 
+    /// Poll to see if the service is ready, since `hyper::Client`
+    /// already handles this internally this will always return ready
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         Ok(Async::Ready(()))
     }
 
+    /// Send the sepcficied request to the inner `hyper::Client`
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        let (parts, body) = req.into_parts();
-        let req = Request::from_parts(parts, body.into());
         self.inner.request(req)
     }
 }

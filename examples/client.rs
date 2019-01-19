@@ -1,5 +1,5 @@
 use futures::{future, Future, Stream};
-use http::{Request, Uri, Method};
+use http::{Method, Request, Uri};
 use hyper::rt;
 use hyper::Body;
 use tower_hyper::Client;

@@ -7,12 +7,19 @@ use hyper::Error;
 use std::marker::PhantomData;
 use tower_service::Service;
 
+/// Creates a `hyper` connection
+///
+/// This accepts a `hyper::client::conn::Builder` and provides
+/// a `MakeService` implementation to create connections from some
+/// target `A`
 pub struct Connect<A, B, C> {
     inner: C,
     builder: Builder,
     _pd: PhantomData<(A, B)>,
 }
 
+/// The future thre represents the eventual connection
+/// or error
 pub struct ConnectFuture<A, B, C>
 where
     B: Payload,
@@ -31,6 +38,7 @@ where
     Handshake(Handshake<C::Response, B>),
 }
 
+/// The error produced from creating a connection
 #[derive(Debug)]
 pub enum ConnectError<T> {
     Connect(T),
@@ -47,10 +55,10 @@ where
 {
     /// Create a new `Connect`.
     ///
-    /// The `connect` argument is used to obtain new session layer instances
+    /// The `C` argument is used to obtain new session layer instances
     /// (`AsyncRead` + `AsyncWrite`). For each new client service returned, a
-    /// task will be spawned onto `executor` that will be used to manage the Hyper
-    /// connection.
+    /// DirectService is returned that can be driven by `poll_service` and to send
+    /// requests via `call`.
     pub fn new(inner: C, builder: Builder) -> Self {
         Connect {
             inner,
@@ -70,6 +78,7 @@ where
     type Error = ConnectError<C::Error>;
     type Future = ConnectFuture<A, B, C>;
 
+    /// This always returns ready
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         Ok(().into())
     }
