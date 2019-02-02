@@ -5,6 +5,8 @@ use hyper::body::Payload;
 use hyper::client::conn::{Builder, Handshake};
 use hyper::Error;
 use std::marker::PhantomData;
+use std::fmt;
+use std::error::Error as StdError;
 use tower_service::Service;
 
 /// Creates a `hyper` connection
@@ -131,7 +133,7 @@ impl<T> fmt::Display for ConnectError<T>
 where
     T: fmt::Display,
 {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
             ConnectError::Connect(ref why) => write!(
                 f,
@@ -141,6 +143,27 @@ where
             ConnectError::Handshake(ref why) => {
                 write!(f, "Error while performing HTTP handshake: {}", why,)
             }
+        }
+    }
+}
+
+impl<T> StdError for ConnectError<T>
+where
+    T: StdError,
+{
+    fn description(&self) -> &str {
+        match *self {
+            ConnectError::Connect(_) =>
+                "error attempting to establish underlying session layer",
+            ConnectError::Handshake(_) =>
+                "error performing HTTP handshake"
+        }
+    }
+
+    fn cause(&self) -> Option<&StdError> {
+        match *self {
+            ConnectError::Connect(ref why) => Some(why),
+            ConnectError::Handshake(ref why) => Some(why),
         }
     }
 }
