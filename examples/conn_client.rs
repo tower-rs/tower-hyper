@@ -9,13 +9,14 @@ use tower_buffer::Buffer;
 use tower_hyper::Connect;
 use tower_service::Service;
 // use tower_util::MakeService;
-use tower_hyper::util::MakeService;
+use tower_hyper::util::{MakeService, Connector};
 
 fn main() {
     pretty_env_logger::init();
     rt::run(future::lazy(|| {
         let dst = Destination::try_from_uri(Uri::from_static("http://127.0.0.1:3000")).unwrap();
-        let mut hyper = Connect::new(HttpConnector::new(1), Builder::new());
+        let connector = Connector::new(HttpConnector::new(1));
+        let mut hyper = Connect::new(connector, Builder::new());
 
         hyper
             .make_service(dst)

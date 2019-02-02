@@ -1,5 +1,4 @@
 use super::Connection;
-use crate::util::ConnectService;
 use futures::{try_ready, Async, Future, Poll};
 use hyper::body::Payload;
 use hyper::client::conn::{Builder, Handshake};
@@ -8,6 +7,7 @@ use std::marker::PhantomData;
 use std::fmt;
 use std::error::Error as StdError;
 use tower_service::Service;
+use tower_util::MakeConnection;
 
 /// Creates a `hyper` connection
 ///
@@ -25,7 +25,7 @@ pub struct Connect<A, B, C> {
 pub struct ConnectFuture<A, B, C>
 where
     B: Payload,
-    C: ConnectService<A>,
+    C: MakeConnection<A>,
 {
     state: State<A, B, C>,
     builder: Builder,
@@ -34,7 +34,7 @@ where
 enum State<A, B, C>
 where
     B: Payload,
-    C: ConnectService<A>,
+    C: MakeConnection<A>,
 {
     Connect(C::Future),
     Handshake(Handshake<C::Response, B>),
@@ -51,7 +51,7 @@ pub enum ConnectError<T> {
 
 impl<A, B, C> Connect<A, B, C>
 where
-    C: ConnectService<A>,
+    C: MakeConnection<A>,
     B: Payload,
     C::Response: Send + 'static,
 {
@@ -72,7 +72,7 @@ where
 
 impl<A, B, C> Service<A> for Connect<A, B, C>
 where
-    C: ConnectService<A> + 'static,
+    C: MakeConnection<A> + 'static,
     B: Payload + 'static,
     C::Response: Send + 'static,
 {
@@ -87,7 +87,7 @@ where
 
     /// Obtains a Connection on a single plaintext h2 connection to a remote.
     fn call(&mut self, target: A) -> Self::Future {
-        let state = State::Connect(self.inner.connect(target));
+        let state = State::Connect(self.inner.make_connection(target));
         let builder = self.builder.clone();
 
         ConnectFuture { state, builder }
@@ -98,7 +98,7 @@ where
 
 impl<A, B, C> Future for ConnectFuture<A, B, C>
 where
-    C: ConnectService<A>,
+    C: MakeConnection<A>,
     B: Payload,
     C::Response: Send + 'static,
 {
