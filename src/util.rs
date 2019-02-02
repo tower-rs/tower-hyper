@@ -3,10 +3,21 @@ use hyper::client::connect::{Connect, Destination};
 use tower_direct_service::DirectService;
 use tower_service::Service;
 
+/// A bridge between `hyper::client::connect::Connect` types
+/// and `tower_util::MakeConnection`.
+///
+/// # Example
+///
+/// ```no_run
+/// let connector = Connector::new(HttpConnector::new(1));
+/// let mut hyper = Connect::new(connector, Builder::new());
+/// ```
 pub struct Connector<C> {
     inner: C,
 }
 
+/// The future that resolves to the eventual inner transport
+/// as built by `hyper::client::connect::Connect`.
 pub struct ConnectorFuture<C>
 where
     C: Connect,
@@ -18,6 +29,7 @@ impl<C> Connector<C>
 where
     C: Connect,
 {
+    /// Construct a new connector from a `hyper::client::connect::Connect`
     pub fn new(inner: C) -> Self {
         Self { inner }
     }
