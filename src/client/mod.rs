@@ -1,3 +1,5 @@
+//! The client portion of `tower-hyper`.
+//!
 //! The client module contains three main utiliteies client, connection
 //! and connect. Connection and Connect are designed to be used together
 //! where as Client is a thicker client designed to be used by itself. There
@@ -10,6 +12,7 @@ mod connection;
 
 pub use self::connect::{Connect, ConnectError};
 pub use self::connection::Connection;
+pub use hyper::client::conn::Builder;
 
 use futures::{Async, Poll};
 use http::{Request, Response};

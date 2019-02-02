@@ -2,7 +2,7 @@ use futures::{future, Future, Stream};
 use http::{Method, Request, Uri};
 use hyper::rt;
 use hyper::Body;
-use tower_hyper::Client;
+use tower_hyper::client::Client;
 use tower_service::Service;
 
 fn main() {

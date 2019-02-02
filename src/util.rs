@@ -1,49 +1,73 @@
-use futures::{Future, Poll};
+use futures::{Future, Poll, Async, try_ready};
 use hyper::client::connect::{Connect, Destination};
-use tokio_io::{AsyncRead, AsyncWrite};
 use tower_direct_service::DirectService;
 use tower_service::Service;
 
-/// The ConnectService trait is used to create transports
+/// A bridge between `hyper::client::connect::Connect` types
+/// and `tower_util::MakeConnection`.
 ///
-/// The goal of this service is to allow composable methods to creating
-/// `AsyncRead + AsyncWrite` transports. This could mean creating a TLS
-/// based connection or using some other method to authenticate the connection.
-pub trait ConnectService<A> {
-    type Response: AsyncRead + AsyncWrite;
-    type Error;
-    type Future: Future<Item = Self::Response, Error = Self::Error>;
-
-    fn connect(&mut self, target: A) -> Self::Future;
+/// # Example
+///
+/// ```
+/// # use tower_hyper::util::Connector;
+/// # use tower_hyper::client::{Connect, Builder};
+/// # use hyper::client::HttpConnector;
+/// let connector = Connector::new(HttpConnector::new(1));
+/// let mut hyper = Connect::new(connector, Builder::new());
+/// # let hyper: Connect<hyper::client::connect::Destination, hyper::Body, Connector<HttpConnector>> = hyper;
+/// ```
+pub struct Connector<C> {
+    inner: C,
 }
 
-// Here for references
-// impl<A, C> ConnectService<A> for C
-// where
-//     C: Service<A>,
-//     C::Response: AsyncRead + AsyncWrite,
-// {
-//     type Response = C::Response;
-//     type Error = C::Error;
-//     type Future = C::Future;
-
-//     fn connect(&mut self, target: A) -> Self::Future {
-//         self.call(target)
-//     }
-// }
-
-impl<C> ConnectService<Destination> for C
+/// The future that resolves to the eventual inner transport
+/// as built by `hyper::client::connect::Connect`.
+pub struct ConnectorFuture<C>
 where
     C: Connect,
-    C::Future: 'static,
+{
+    inner: C::Future,
+}
+
+impl<C> Connector<C>
+where
+    C: Connect,
+{
+    /// Construct a new connector from a `hyper::client::connect::Connect`
+    pub fn new(inner: C) -> Self {
+        Self { inner }
+    }
+}
+
+impl<C> Service<Destination> for Connector<C>
+where
+    C: Connect,
 {
     type Response = C::Transport;
     type Error = C::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error> + Send + 'static>;
+    type Future = ConnectorFuture<C>;
 
-    fn connect(&mut self, req: Destination) -> Self::Future {
-        let fut = <Self as Connect>::connect(self, req).map(|(transport, _)| transport);
-        Box::new(fut)
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        Ok(().into())
+    }
+
+    fn call(&mut self, target: Destination) -> Self::Future {
+        let fut = self.inner.connect(target);
+        ConnectorFuture { inner: fut }
+    }
+}
+
+impl<C> Future for ConnectorFuture<C>
+where
+    C: Connect,
+{
+    type Item = C::Transport;
+    type Error = C::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let (transport, _) = try_ready!(self.inner.poll());
+
+        Ok(Async::Ready(transport))
     }
 }
 
