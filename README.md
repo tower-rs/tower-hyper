@@ -9,7 +9,8 @@ A (WIP) integration between hyper and tower
 Simple client connection example, check it out [here](/examples/conn_client.rs)
 
 ``` rust
-let mut hyper = Connect::new(HttpConnector::new(1), Builder::new());
+let connector = Connector::new(HttpConnector::new(1));
+let mut hyper = Connect::new(connector, Builder::new());
 
 let request = hyper
 	.make_service(dst)
