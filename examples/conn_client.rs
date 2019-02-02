@@ -6,7 +6,7 @@ use hyper::rt;
 use hyper::Body;
 use tokio_executor::DefaultExecutor;
 use tower_buffer::Buffer;
-use tower_hyper::Connect;
+use tower_hyper::client::Connect;
 use tower_service::Service;
 // use tower_util::MakeService;
 use tower_hyper::util::{MakeService, Connector};

@@ -7,8 +7,6 @@
 //! the client portion is done and working. The server side is blocked partially
 //! by hypers use of its own Service and MakeService traits.
 
-mod client;
+pub mod client;
 mod retries;
 pub mod util;
-
-pub use self::client::{Client, Connect, ConnectError, Connection};

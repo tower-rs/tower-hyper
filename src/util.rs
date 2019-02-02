@@ -8,9 +8,13 @@ use tower_service::Service;
 ///
 /// # Example
 ///
-/// ```no_run
+/// ```
+/// # use tower_hyper::util::Connector;
+/// # use tower_hyper::client::{Connect, Builder};
+/// # use hyper::client::HttpConnector;
 /// let connector = Connector::new(HttpConnector::new(1));
 /// let mut hyper = Connect::new(connector, Builder::new());
+/// # let hyper: Connect<hyper::client::connect::Destination, hyper::Body, Connector<HttpConnector>> = hyper;
 /// ```
 pub struct Connector<C> {
     inner: C,
