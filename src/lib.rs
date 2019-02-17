@@ -8,5 +8,9 @@
 //! by hypers use of its own Service and MakeService traits.
 
 pub mod client;
-mod retries;
+pub mod retries;
 pub mod util;
+
+mod body;
+
+pub use body::Body;

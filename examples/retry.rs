@@ -3,12 +3,14 @@ use http::{Request, Uri};
 use hyper::client::conn::Builder;
 use hyper::client::connect::{Destination, HttpConnector};
 use hyper::rt;
-use hyper::Body;
 use tower_buffer::Buffer;
 use tower_hyper::client::Connect;
+use tower_hyper::util::Connector;
+use tower_hyper::Body;
 use tower_service::Service;
 use tower_util::MakeService;
-use tower_hyper::util::Connector;
+use tower_hyper::retries::RetryPolicy;
+use tower_retry::Retry;
 
 fn main() {
     pretty_env_logger::init();
@@ -21,11 +23,16 @@ fn main() {
             .make_service(dst)
             .map_err(|err| eprintln!("Connect Error {:?}", err))
             .and_then(|conn| {
-                Buffer::new(conn, 1)
-                    .map_err(|_| panic!("Unable to spawn!"))
+                let buf = Buffer::new(conn, 1).map_err(|_| panic!("Unable to spawn!"));
+
+                let policy = RetryPolicy::new(5);
+
+                let retry = Retry::new(policy, buf.unwrap());
+
+                Buffer::new(retry, 1).map_err(|_| panic!("Unable to spawn!"))
             })
             .and_then(|mut conn| {
-                conn.call(Request::new(Body::empty()))
+                conn.call(Request::new(Body::from(Vec::new())))
                     .map_err(|e| eprintln!("Call Error: {}", e))
                     .and_then(|response| {
                         println!("Response Status: {:?}", response.status());
