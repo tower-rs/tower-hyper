@@ -7,6 +7,14 @@
 //! the client portion is done and working. The server side is blocked partially
 //! by hypers use of its own Service and MakeService traits.
 
+#![deny(missing_docs, missing_debug_implementations)]
+
 pub mod client;
-mod retries;
+/// Contains retry utilities
+pub mod retries;
+/// Contains general utilities
 pub mod util;
+/// Contains the specialized body for retries
+pub mod body;
+
+pub use body::Body;

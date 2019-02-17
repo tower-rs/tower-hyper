@@ -1,11 +1,14 @@
 use super::Connection;
+use futures::future::Executor;
 use futures::{try_ready, Async, Future, Poll};
 use hyper::body::Payload;
 use hyper::client::conn::{Builder, Handshake};
 use hyper::Error;
-use std::marker::PhantomData;
-use std::fmt;
+use log::error;
 use std::error::Error as StdError;
+use std::fmt;
+use std::marker::PhantomData;
+use tokio_executor::DefaultExecutor;
 use tower_service::Service;
 use tower_util::MakeConnection;
 
@@ -14,6 +17,7 @@ use tower_util::MakeConnection;
 /// This accepts a `hyper::client::conn::Builder` and provides
 /// a `MakeService` implementation to create connections from some
 /// target `A`
+#[derive(Debug)]
 pub struct Connect<A, B, C> {
     inner: C,
     builder: Builder,
@@ -43,8 +47,13 @@ where
 /// The error produced from creating a connection
 #[derive(Debug)]
 pub enum ConnectError<T> {
+    /// An error occurred while attempting to establish the connection.
     Connect(T),
+    /// An error occurred while performing hyper's handshake.
     Handshake(Error),
+    /// An error occurred attempting to spawn the connect task on the
+    /// provided executor.
+    SpawnError,
 }
 
 // ===== impl Connect =====
@@ -59,7 +68,7 @@ where
     ///
     /// The `C` argument is used to obtain new session layer instances
     /// (`AsyncRead` + `AsyncWrite`). For each new client service returned, a
-    /// DirectService is returned that can be driven by `poll_service` and to send
+    /// Service is returned that can be driven by `poll_service` and to send
     /// requests via `call`.
     pub fn new(inner: C, builder: Builder) -> Self {
         Connect {
@@ -76,7 +85,7 @@ where
     B: Payload + 'static,
     C::Response: Send + 'static,
 {
-    type Response = Connection<C::Response, B>;
+    type Response = Connection<B>;
     type Error = ConnectError<C::Error>;
     type Future = ConnectFuture<A, B, C>;
 
@@ -102,7 +111,7 @@ where
     B: Payload,
     C::Response: Send + 'static,
 {
-    type Item = Connection<C::Response, B>;
+    type Item = Connection<B>;
     type Error = ConnectError<C::Error>;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
@@ -116,7 +125,11 @@ where
                 State::Handshake(ref mut fut) => {
                     let (sender, conn) = try_ready!(fut.poll().map_err(ConnectError::Handshake));
 
-                    let connection = Connection::new(sender, conn);
+                    let exec = DefaultExecutor::current();
+                    exec.execute(conn.map_err(|e| error!("error with hyper: {}", e)))
+                        .map_err(|_| ConnectError::SpawnError)?;
+
+                    let connection = Connection::new(sender);
 
                     return Ok(Async::Ready(connection));
                 }
@@ -125,6 +138,16 @@ where
             let handshake = self.builder.handshake(io);
             self.state = State::Handshake(handshake);
         }
+    }
+}
+
+impl<A, B, C> fmt::Debug for ConnectFuture<A, B, C>
+where
+    C: MakeConnection<A>,
+    B: Payload,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("ConnectFuture")
     }
 }
 
@@ -143,6 +166,7 @@ where
             ConnectError::Handshake(ref why) => {
                 write!(f, "Error while performing HTTP handshake: {}", why,)
             }
+            ConnectError::SpawnError => write!(f, "Error spawning background task"),
         }
     }
 }
@@ -153,10 +177,9 @@ where
 {
     fn description(&self) -> &str {
         match *self {
-            ConnectError::Connect(_) =>
-                "error attempting to establish underlying session layer",
-            ConnectError::Handshake(_) =>
-                "error performing HTTP handshake"
+            ConnectError::Connect(_) => "error attempting to establish underlying session layer",
+            ConnectError::Handshake(_) => "error performing HTTP handshake",
+            ConnectError::SpawnError => "Error spawning background task",
         }
     }
 
@@ -164,6 +187,7 @@ where
         match *self {
             ConnectError::Connect(ref why) => Some(why),
             ConnectError::Handshake(ref why) => Some(why),
+            ConnectError::SpawnError => None,
         }
     }
 }
