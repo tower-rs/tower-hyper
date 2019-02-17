@@ -9,6 +9,7 @@ use tower_service::Service;
 /// This provides an interface for `DirectService` that will
 /// drive the inner service via `poll_service` and can send
 /// requests via `call`.
+#[derive(Debug)]
 pub struct Connection<B>
 where
     B: Payload,

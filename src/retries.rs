@@ -4,12 +4,19 @@ use hyper::Body;
 use tower_retry::Policy;
 use std::marker::PhantomData;
 
+/// A simple retry policy for hyper bases requests.
+///
+/// It currently only retries any non `4xx-2xx` responses. To use
+/// this policy you must use the `Body` type that is provided in this
+/// crate.
+#[derive(Debug)]
 pub struct RetryPolicy<E> {
     attempts: u8,
     _pd: PhantomData<E>
 }
 
 impl<E> RetryPolicy<E> {
+    /// Create a new policy with the provided amount of retries
     pub fn new(attempts: u8) -> Self {
         RetryPolicy { attempts, _pd: PhantomData }
     }
@@ -74,6 +81,8 @@ impl<E> Clone for RetryPolicy<E> {
     }
 }
 
+/// Trait to perform attempted clones of the requests body.
 pub trait TryClone: Sized {
+    /// Attempt to clone
     fn try_clone(&self) -> Option<Self>;
 }

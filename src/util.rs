@@ -15,12 +15,14 @@ use tower_service::Service;
 /// let mut hyper = Connect::new(connector, Builder::new());
 /// # let hyper: Connect<hyper::client::connect::Destination, hyper::Body, Connector<HttpConnector>> = hyper;
 /// ```
+#[derive(Debug)]
 pub struct Connector<C> {
     inner: C,
 }
 
 /// The future that resolves to the eventual inner transport
 /// as built by `hyper::client::connect::Connect`.
+#[derive(Debug)]
 pub struct ConnectorFuture<C>
 where
     C: Connect,

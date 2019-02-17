@@ -2,6 +2,14 @@ use crate::retries::TryClone;
 use futures::{Async, Poll};
 use hyper::body::{Chunk, Payload};
 
+/// A specialized Body for hyper
+///
+/// This provides a simple workaround Body to allow the
+/// request to be cloned. This is mostly important with the
+/// `tower-retry` middleware. This is because on retry it must
+/// clone the request and thus the `Body`. This `Body` only allows one
+/// to construct it from a single `hyper::body::Chunk`. This allows it to
+/// enforce `Clone`.
 #[derive(Debug)]
 pub struct Body<B> {
     pub(crate) body: Option<B>,

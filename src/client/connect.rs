@@ -17,6 +17,7 @@ use tower_util::MakeConnection;
 /// This accepts a `hyper::client::conn::Builder` and provides
 /// a `MakeService` implementation to create connections from some
 /// target `A`
+#[derive(Debug)]
 pub struct Connect<A, B, C> {
     inner: C,
     builder: Builder,
@@ -46,8 +47,12 @@ where
 /// The error produced from creating a connection
 #[derive(Debug)]
 pub enum ConnectError<T> {
+    /// An error occurred while attempting to establish the connection.
     Connect(T),
+    /// An error occurred while performing hyper's handshake.
     Handshake(Error),
+    /// An error occurred attempting to spawn the connect task on the
+    /// provided executor.
     SpawnError,
 }
 
@@ -133,6 +138,16 @@ where
             let handshake = self.builder.handshake(io);
             self.state = State::Handshake(handshake);
         }
+    }
+}
+
+impl<A, B, C> fmt::Debug for ConnectFuture<A, B, C>
+where
+    C: MakeConnection<A>,
+    B: Payload,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("ConnectFuture")
     }
 }
 
