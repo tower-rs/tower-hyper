@@ -1,8 +1,8 @@
 use futures::future;
 use http::{Request, Response};
 use hyper::Body;
-use tower_retry::Policy;
 use std::marker::PhantomData;
+use tower_retry::Policy;
 
 /// A simple retry policy for hyper bases requests.
 ///
@@ -12,13 +12,16 @@ use std::marker::PhantomData;
 #[derive(Debug)]
 pub struct RetryPolicy<E> {
     attempts: u8,
-    _pd: PhantomData<E>
+    _pd: PhantomData<E>,
 }
 
 impl<E> RetryPolicy<E> {
     /// Create a new policy with the provided amount of retries
     pub fn new(attempts: u8) -> Self {
-        RetryPolicy { attempts, _pd: PhantomData }
+        RetryPolicy {
+            attempts,
+            _pd: PhantomData,
+        }
     }
 }
 
@@ -28,11 +31,7 @@ where
 {
     type Future = future::FutureResult<Self, ()>;
 
-    fn retry(
-        &self,
-        _: &Request<T>,
-        result: Result<&Response<Body>, &E>,
-    ) -> Option<Self::Future> {
+    fn retry(&self, _: &Request<T>, result: Result<&Response<Body>, &E>) -> Option<Self::Future> {
         if self.attempts == 0 {
             // We ran out of retries, hence us returning none.
             return None;
@@ -50,7 +49,7 @@ where
             }
             Err(_) => Some(future::ok(RetryPolicy {
                 attempts: self.attempts - 1,
-                _pd: PhantomData
+                _pd: PhantomData,
             })),
         }
     }
