@@ -9,12 +9,13 @@
 
 #![deny(missing_docs, missing_debug_implementations)]
 
-pub mod client;
-/// Contains retry utilities
-pub mod retries;
-/// Contains general utilities
-pub mod util;
 /// Contains the specialized body for retries
 pub mod body;
+pub mod client;
+/// Contains ref retry logic
+pub mod retries;
+pub mod server;
+/// Util for working with hyper and tower
+pub mod util;
 
 pub use body::Body;
