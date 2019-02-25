@@ -9,13 +9,10 @@
 
 #![deny(missing_docs, missing_debug_implementations)]
 
-/// Contains the specialized body for retries
-pub mod body;
 pub mod client;
 /// Contains ref retry logic
-pub mod retries;
+#[cfg(feature = "retry")]
+pub mod retry;
 pub mod server;
 /// Util for working with hyper and tower
 pub mod util;
-
-pub use body::Body;
