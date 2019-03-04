@@ -44,7 +44,7 @@ impl<C> Service<Destination> for Connector<C>
 where
     C: Connect,
 {
-    type Response = C::Transport;
+    type Response = (C::Transport, ());
     type Error = C::Error;
     type Future = ConnectorFuture<C>;
 
@@ -62,12 +62,12 @@ impl<C> Future for ConnectorFuture<C>
 where
     C: Connect,
 {
-    type Item = C::Transport;
+    type Item = (C::Transport, ());
     type Error = C::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let (transport, _) = try_ready!(self.inner.poll());
 
-        Ok(Async::Ready(transport))
+        Ok(Async::Ready((transport, ())))
     }
 }

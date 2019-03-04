@@ -35,6 +35,18 @@ where
     builder: Builder,
 }
 
+/// The extra data for HTTP connector.
+pub trait HttpExtra {
+    /// HTTP version.
+    fn version(&self) -> Option<http::Version>;
+}
+
+impl HttpExtra for () {
+    fn version(&self) -> Option<http::Version> {
+        None
+    }
+}
+
 enum State<A, B, C>
 where
     B: Payload,
@@ -84,6 +96,7 @@ where
     C: MakeConnection<A> + 'static,
     B: Payload + 'static,
     C::Response: Send + 'static,
+    C::Extra: HttpExtra
 {
     type Response = Connection<B>;
     type Error = ConnectError<C::Error>;
@@ -110,13 +123,14 @@ where
     C: MakeConnection<A>,
     B: Payload,
     C::Response: Send + 'static,
+    C::Extra: HttpExtra,
 {
     type Item = Connection<B>;
     type Error = ConnectError<C::Error>;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         loop {
-            let io = match self.state {
+            let (io, extra) = match self.state {
                 State::Connect(ref mut fut) => {
                     let res = fut.poll().map_err(ConnectError::Connect);
 
@@ -134,6 +148,10 @@ where
                     return Ok(Async::Ready(connection));
                 }
             };
+
+            if let Some(ver) = extra.version() {
+                self.builder.http2_only(ver == http::Version::HTTP_2);
+            }
 
             let handshake = self.builder.handshake(io);
             self.state = State::Handshake(handshake);

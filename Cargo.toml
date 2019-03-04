@@ -25,3 +25,7 @@ pretty_env_logger = "0.2.0"
 [features]
 default = ["retry"]
 retry = ["tower-retry"]
+
+[patch.'https://github.com/tower-rs/tower']
+tower-util = { git = "https://github.com/quininer/tower", branch = "makeconn" }
+tower-service = { git = "https://github.com/quininer/tower", branch = "makeconn" }
