@@ -17,20 +17,18 @@ impl<T> LiftBody<T> {
     }
 }
 
+impl<T: Payload> LiftBody<T> {
+    /// Get the inner wrapped payload
+    pub fn into_inner(self) -> T {
+        self.inner
+    }
+}
+
 impl<T: Payload> BufStream for LiftBody<T> {
     type Item = <T as Payload>::Data;
     type Error = <T as Payload>::Error;
 
     fn poll_buf(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        Payload::poll_data(self)
-    }
-}
-
-impl<T: Payload> Payload for LiftBody<T> {
-    type Data = <T as Payload>::Data;
-    type Error = <T as Payload>::Error;
-
-    fn poll_data(&mut self) -> Poll<Option<Self::Data>, Self::Error> {
-        Payload::poll_data(self)
+        self.inner.poll_data()
     }
 }

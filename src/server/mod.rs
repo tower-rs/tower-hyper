@@ -82,7 +82,7 @@ where
     T::Future: Send + 'static,
 {
     type ReqBody = Body;
-    type ResBody = LiftBody<Body>;
+    type ResBody = Body;
     type Error = hyper::Error;
     // type Future = T::Future;
     type Future = Box<Future<Item = Response<Self::ResBody>, Error = Self::Error> + Send + 'static>;
@@ -91,7 +91,7 @@ where
         let fut = self
             .inner
             .call(request)
-            // .map(|r| r.map(|b| LiftBody::new(b)))
+            .map(|r| r.map(LiftBody::into_inner))
             .map_err(|_| unimplemented!());
 
         Box::new(fut)
