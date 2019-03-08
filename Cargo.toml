@@ -12,7 +12,7 @@ log = "0.4"
 tokio-io = "0.1"
 tokio-buf = "0.1"
 tokio-executor = "0.1"
-tower-service = { git = "https://github.com/tower-rs/tower" }
+tower-service = "0.2"
 tower-retry = { git = "https://github.com/tower-rs/tower", optional = true }
 tower-util = { git = "https://github.com/tower-rs/tower" }
 tower-http-service = { git = "https://github.com/tower-rs/tower-http" }
@@ -27,5 +27,3 @@ pretty_env_logger = "0.2.0"
 default = ["retry"]
 retry = ["tower-retry"]
 
-[patch.crates-io]
-tower-service = { git = "https://github.com/tower-rs/tower" }
