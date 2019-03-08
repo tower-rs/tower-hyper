@@ -9,6 +9,7 @@
 
 #![deny(missing_docs, missing_debug_implementations)]
 
+pub mod body;
 pub mod client;
 /// Contains ref retry logic
 #[cfg(feature = "retry")]

@@ -1,11 +1,12 @@
 //! The server porition of tower hyper
 
+use crate::body::LiftBody;
 use futures::Future;
 use hyper::service::Service as HyperService;
 use hyper::Body;
 use hyper::{Request, Response};
 use tokio_io::{AsyncRead, AsyncWrite};
-use tower_http::HttpService;
+use tower_http_service::HttpService;
 use tower_service::Service;
 use tower_util::MakeService;
 
@@ -19,10 +20,10 @@ pub struct Server<S> {
 
 impl<S> Server<S>
 where
-    S: MakeService<(), Request<Body>, Response = Response<Body>> + Send + 'static,
+    S: MakeService<(), Request<Body>, Response = Response<LiftBody<Body>>> + Send + 'static,
     S::Error: std::error::Error + Send + Sync + 'static,
     S::Future: Send + 'static,
-    S::Service: Send + 'static,
+    S::Service: Service<Request<Body>> + Send + 'static,
     <S::Service as Service<Request<Body>>>::Future: Send + 'static,
 {
     /// Create a new server from a `MakeService`
@@ -76,7 +77,7 @@ impl<T> Lift<T> {
 
 impl<T> HyperService for Lift<T>
 where
-    T: HttpService<Body, ResponseBody = Body> + Send + 'static,
+    T: HttpService<Body, ResponseBody = LiftBody<Body>> + Send + 'static,
     T::Error: std::error::Error + Send + Sync + 'static,
     T::Future: Send + 'static,
 {
@@ -87,7 +88,11 @@ where
     type Future = Box<Future<Item = Response<Self::ResBody>, Error = Self::Error> + Send + 'static>;
 
     fn call(&mut self, request: Request<Self::ReqBody>) -> Self::Future {
-        let fut = self.inner.call(request).map_err(|_| unimplemented!());
+        let fut = self
+            .inner
+            .call(request)
+            .map(|r| r.map(LiftBody::into_inner))
+            .map_err(|_| unimplemented!());
 
         Box::new(fut)
     }
