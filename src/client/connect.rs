@@ -9,8 +9,8 @@ use std::error::Error as StdError;
 use std::fmt;
 use std::marker::PhantomData;
 use tokio_executor::DefaultExecutor;
+use tower::MakeConnection;
 use tower_service::Service;
-use tower_util::MakeConnection;
 
 /// Creates a `hyper` connection
 ///

@@ -3,13 +3,13 @@ use http::{Request, Uri};
 use hyper::client::conn::Builder;
 use hyper::client::connect::{Destination, HttpConnector};
 use hyper::rt;
+use tower::MakeService;
 use tower_buffer::Buffer;
 use tower_hyper::client::Connect;
 use tower_hyper::retry::{Body, RetryPolicy};
 use tower_hyper::util::Connector;
 use tower_retry::Retry;
 use tower_service::Service;
-use tower_util::MakeService;
 
 fn main() {
     pretty_env_logger::init();

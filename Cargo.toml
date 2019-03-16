@@ -14,7 +14,7 @@ tokio-buf = "0.1"
 tokio-executor = "0.1"
 tower-service = "0.2"
 tower-retry = { git = "https://github.com/tower-rs/tower", optional = true }
-tower-util = { git = "https://github.com/tower-rs/tower" }
+tower = { git = "https://github.com/tower-rs/tower" }
 tower-http-service = { git = "https://github.com/tower-rs/tower-http" }
 
 [dev-dependencies]
