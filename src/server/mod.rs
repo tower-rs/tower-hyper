@@ -6,9 +6,9 @@ use hyper::service::Service as HyperService;
 use hyper::Body;
 use hyper::{Request, Response};
 use tokio_io::{AsyncRead, AsyncWrite};
+use tower::MakeService;
 use tower_http_service::HttpService;
 use tower_service::Service;
-use tower_util::MakeService;
 
 pub use hyper::server::conn::Http;
 

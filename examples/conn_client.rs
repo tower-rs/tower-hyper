@@ -4,11 +4,11 @@ use hyper::client::conn::Builder;
 use hyper::client::connect::{Destination, HttpConnector};
 use hyper::rt;
 use hyper::Body;
+use tower::MakeService;
 use tower_buffer::Buffer;
 use tower_hyper::client::Connect;
-use tower_service::Service;
-use tower_util::MakeService;
 use tower_hyper::util::Connector;
+use tower_service::Service;
 
 fn main() {
     pretty_env_logger::init();
@@ -20,10 +20,7 @@ fn main() {
         hyper
             .make_service(dst)
             .map_err(|err| eprintln!("Connect Error {:?}", err))
-            .and_then(|conn| {
-                Buffer::new(conn, 1)
-                    .map_err(|_| panic!("Unable to spawn!"))
-            })
+            .and_then(|conn| Buffer::new(conn, 1).map_err(|_| panic!("Unable to spawn!")))
             .and_then(|mut conn| {
                 conn.call(Request::new(Body::empty()))
                     .map_err(|e| eprintln!("Call Error: {}", e))
