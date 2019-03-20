@@ -89,9 +89,11 @@ where
     type Error = ConnectError<C::Error>;
     type Future = ConnectFuture<A, B, C>;
 
-    /// This always returns ready
+    /// Check if the `MakeConnection` is ready for a new connection.
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-        Ok(().into())
+        self.inner
+            .poll_ready()
+            .map_err(|e| ConnectError::Connect(e))
     }
 
     /// Obtains a Connection on a single plaintext h2 connection to a remote.
