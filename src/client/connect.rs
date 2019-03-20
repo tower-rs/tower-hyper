@@ -89,7 +89,7 @@ where
     type Error = ConnectError<C::Error>;
     type Future = ConnectFuture<A, B, C>;
 
-    /// This always returns ready
+    /// Check if the `MakeConnection` is ready for a new connection.
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         self.inner
             .poll_ready()
