@@ -91,7 +91,9 @@ where
 
     /// This always returns ready
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-        Ok(().into())
+        self.inner
+            .poll_ready()
+            .map_err(|e| ConnectError::Connect(e))
     }
 
     /// Obtains a Connection on a single plaintext h2 connection to a remote.
