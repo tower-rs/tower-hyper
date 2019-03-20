@@ -41,7 +41,7 @@ where
     C: MakeConnection<A>,
 {
     Connect(C::Future),
-    Handshake(Handshake<C::Response, B>),
+    Handshake(Handshake<C::Connection, B>),
 }
 
 /// The error produced from creating a connection
@@ -62,7 +62,7 @@ impl<A, B, C> Connect<A, B, C>
 where
     C: MakeConnection<A>,
     B: Payload,
-    C::Response: Send + 'static,
+    C::Connection: Send + 'static,
 {
     /// Create a new `Connect`.
     ///
@@ -83,7 +83,7 @@ impl<A, B, C> Service<A> for Connect<A, B, C>
 where
     C: MakeConnection<A> + 'static,
     B: Payload + 'static,
-    C::Response: Send + 'static,
+    C::Connection: Send + 'static,
 {
     type Response = Connection<B>;
     type Error = ConnectError<C::Error>;
@@ -109,7 +109,7 @@ impl<A, B, C> Future for ConnectFuture<A, B, C>
 where
     C: MakeConnection<A>,
     B: Payload,
-    C::Response: Send + 'static,
+    C::Connection: Send + 'static,
 {
     type Item = Connection<B>;
     type Error = ConnectError<C::Error>;
