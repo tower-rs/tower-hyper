@@ -25,7 +25,7 @@ use tower_service::Service;
 ///
 /// The generics `C` and `B` are 1-1 with the generic
 /// types within `hyper::Client`.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Client<C, B> {
     inner: hyper::Client<C, B>,
 }
