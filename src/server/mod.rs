@@ -7,7 +7,7 @@ use hyper::Body;
 use hyper::{Request, Response};
 use tokio_io::{AsyncRead, AsyncWrite};
 use tower::MakeService;
-use tower_http_service::HttpService;
+use tower_http::HttpService;
 use tower_service::Service;
 
 pub use hyper::server::conn::Http;
