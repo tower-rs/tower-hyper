@@ -14,11 +14,13 @@ pub use self::connect::{Connect, ConnectError};
 pub use self::connection::Connection;
 pub use hyper::client::conn::Builder;
 
+use crate::body::LiftBody;
 use futures::{Async, Poll};
 use http::{Request, Response};
 use hyper::{
-    body::Payload, client::connect::Connect as HyperConnect, client::ResponseFuture, Body,
+    client::connect::Connect as HyperConnect, client::HttpConnector, client::ResponseFuture, Body,
 };
+use tower_http::Body as HttpBody;
 use tower_service::Service;
 
 /// The client wrapp for `hyper::Client`
@@ -27,27 +29,34 @@ use tower_service::Service;
 /// types within `hyper::Client`.
 #[derive(Clone, Debug)]
 pub struct Client<C, B> {
-    inner: hyper::Client<C, B>,
+    inner: hyper::Client<C, LiftBody<B>>,
 }
 
-impl<C, B> Client<C, B> {
-    /// Create a new client from a `hyper::Client`
-    pub fn new(inner: hyper::Client<C, B>) -> Self {
+impl<B> Client<HttpConnector, B>
+    where
+        B: HttpBody,
+        LiftBody<B>: hyper::body::Payload,
+
+{
+    /// Create a new client, using the default hyper settings
+    pub fn new() -> Self {
+        let inner = hyper::Client::builder().build_http();
         Self { inner }
     }
 }
+
 
 impl<C, B> Service<Request<B>> for Client<C, B>
 where
     C: HyperConnect + Sync + 'static,
     C::Transport: 'static,
     C::Future: 'static,
-    B: Payload + Send + 'static,
-    B::Data: Send,
+    B: HttpBody,
+    LiftBody<B>: hyper::body::Payload,
 {
-    type Response = Response<Body>;
+    type Response = Response<LiftBody<Body>>;
     type Error = hyper::Error;
-    type Future = ResponseFuture;
+    type Future = connection::LiftResponseFuture<ResponseFuture>;
 
     /// Poll to see if the service is ready, since `hyper::Client`
     /// already handles this internally this will always return ready
@@ -57,6 +66,7 @@ where
 
     /// Send the sepcficied request to the inner `hyper::Client`
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        self.inner.request(req)
+        let fut = self.inner.request(req.map(LiftBody::new));
+        connection::LiftResponseFuture(fut)
     }
 }
