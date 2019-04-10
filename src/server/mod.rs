@@ -114,8 +114,7 @@ where
             .inner
             .call(request.map(LiftBody::new))
             .map(|r| r.map(LiftBody::new))
-            .map_err(|e| {
-                eprintln!("{:?}", e.into());
+            .map_err(|_e| {
                 unimplemented!()
             });
 
