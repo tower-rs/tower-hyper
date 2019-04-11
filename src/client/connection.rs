@@ -31,8 +31,9 @@ where
 
 impl<B> Service<Request<B>> for Connection<B>
 where
-    LiftBody<B>: hyper::body::Payload,
-    B: HttpBody,
+    B: HttpBody + Send + 'static,
+    B::Item: Send,
+    B::Error: Into<Box<std::error::Error + Send + Sync>>,
 {
     type Response = Response<LiftBody<hyper::Body>>;
     type Error = hyper::Error;

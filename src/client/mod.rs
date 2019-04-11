@@ -32,10 +32,22 @@ pub struct Client<C, B> {
     inner: hyper::Client<C, LiftBody<B>>,
 }
 
+impl<B> Default for Client<HttpConnector, B>
+    where
+        B: HttpBody + Send + 'static,
+        B::Item: Send,
+        B::Error: Into<Box<std::error::Error + Send + Sync>>,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<B> Client<HttpConnector, B>
     where
-        B: HttpBody,
-        LiftBody<B>: hyper::body::Payload,
+        B: HttpBody + Send + 'static,
+        B::Item: Send,
+        B::Error: Into<Box<std::error::Error + Send + Sync>>,
 
 {
     /// Create a new client, using the default hyper settings
@@ -45,14 +57,30 @@ impl<B> Client<HttpConnector, B>
     }
 }
 
+impl<C, B> Client<C, B> {
+    /// Create a new client by providing the inner `hyper::Client`
+    ///
+    /// ## Example
+    ///
+    /// The existing default is:
+    ///```
+    ///   let inner = hyper::Client::builder().build_http();
+    ///   Client::with_client(inner)
+    /// ````
+    /// which returns a `Client<HttpConnector, B>` for any B: `HttpBody`.
+    pub fn with_client(inner: hyper::Client<C, LiftBody<B>>) -> Self {
+        Self { inner }
+    }
+}
 
 impl<C, B> Service<Request<B>> for Client<C, B>
 where
     C: HyperConnect + Sync + 'static,
     C::Transport: 'static,
     C::Future: 'static,
-    B: HttpBody,
-    LiftBody<B>: hyper::body::Payload,
+    B: HttpBody + Send + 'static,
+    B::Item: Send,
+    B::Error: Into<Box<std::error::Error + Send + Sync>>,
 {
     type Response = Response<LiftBody<Body>>;
     type Error = hyper::Error;

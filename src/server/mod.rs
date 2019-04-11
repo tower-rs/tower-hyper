@@ -28,7 +28,7 @@ impl<S, B> Server<S, B>
 where
     B: HttpBody + Send + 'static,
     B::Item: Send,
-    B::Error: std::error::Error + Send + Sync,
+    B::Error: Into<Box<std::error::Error + Send + Sync>>,
     S: MakeService<(), Request<LiftBody<Body>>, Response = Response<B>> + Send + 'static,
     S::Error: Into<Error> + 'static,
     S::Future: Send + 'static,
@@ -98,7 +98,7 @@ impl<T, B> HyperService for Lift<T, B>
 where
     B: HttpBody + Send + 'static,
     B::Item: Send,
-    B::Error: std::error::Error + Send + Sync,
+    B::Error: Into<Box<std::error::Error + Send + Sync>>,
     T: HttpService<LiftBody<Body>, ResponseBody = B> + Send + 'static,
     T::Error: Into<Error> + 'static,
     T::Future: Send + 'static,

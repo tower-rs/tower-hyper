@@ -83,7 +83,7 @@ where
 impl<A, B, C> Service<A> for Connect<A, B, C>
 where
     C: MakeConnection<A> + 'static,
-    B: HttpBody + 'static,
+    B: HttpBody,
     LiftBody<B>: hyper::body::Payload,
     C::Connection: Send + 'static,
 {

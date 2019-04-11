@@ -44,7 +44,7 @@ impl<T: Payload> HttpBody for LiftBody<T> {
 impl<T> Payload for LiftBody<T>
     where T: HttpBody + Send + 'static,
           T::Item: Send,
-          T::Error: std::error::Error + Send + Sync,
+          T::Error: Into<Box<std::error::Error + Send + Sync>>,
 {
     type Data = T::Item;
     type Error = T::Error;
