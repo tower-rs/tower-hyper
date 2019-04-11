@@ -64,8 +64,13 @@ impl<C, B> Client<C, B> {
     ///
     /// The existing default is:
     ///```
+    ///   use http::Request;
+    ///   use tower_hyper::client::Client;
+    ///   use tower_service::Service;
+    ///
     ///   let inner = hyper::Client::builder().build_http();
-    ///   Client::with_client(inner)
+    ///   let mut client = Client::with_client(inner);
+    ///   let _ = client.call(Request::new(vec![0, 1, 2]));
     /// ````
     /// which returns a `Client<HttpConnector, B>` for any B: `HttpBody`.
     pub fn with_client(inner: hyper::Client<C, LiftBody<B>>) -> Self {
