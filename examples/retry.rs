@@ -1,12 +1,14 @@
-use futures::{future, Future, Stream};
+use futures::{future, Future};
 use http::{Request, Uri};
 use hyper::client::conn::Builder;
 use hyper::client::connect::{Destination, HttpConnector};
 use hyper::rt;
+use tokio_buf::util::BufStreamExt;
 use tower::MakeService;
 use tower_buffer::Buffer;
+use tower_http::BodyExt;
 use tower_hyper::client::Connect;
-use tower_hyper::retry::{Body, RetryPolicy};
+use tower_hyper::retry::RetryPolicy;
 use tower_hyper::util::Connector;
 use tower_retry::Retry;
 use tower_service::Service;
@@ -31,14 +33,16 @@ fn main() {
                 Buffer::new(retry, 1).map_err(|_| panic!("Unable to spawn!"))
             })
             .and_then(|mut conn| {
-                conn.call(Request::new(Body::from(Vec::new())))
+                conn.call(Request::new(Vec::new()))
                     .map_err(|e| eprintln!("Call Error: {}", e))
                     .and_then(|response| {
                         println!("Response Status: {:?}", response.status());
                         response
                             .into_body()
-                            .concat2()
-                            .map_err(|e| eprintln!("Body Error: {}", e))
+                            .into_buf_stream()
+                            .collect::<Vec<u8>>()
+                            .map(|v| String::from_utf8(v).unwrap())
+                            .map_err(|e| eprintln!("Body Error: {:?}", e))
                     })
                     .and_then(|body| {
                         println!("Response Body: {:?}", body);
