@@ -4,6 +4,9 @@ use futures::Poll;
 use hyper::body::Payload;
 use tower_http::Body as HttpBody;
 
+/// Pinned body
+pub type RecvBody = LiftBody<hyper::Body>;
+
 /// Lifts a body to support `Payload` and `BufStream`
 #[derive(Debug)]
 pub struct LiftBody<T> {
@@ -42,9 +45,10 @@ impl<T: Payload> HttpBody for LiftBody<T> {
 }
 
 impl<T> Payload for LiftBody<T>
-    where T: HttpBody + Send + 'static,
-          T::Item: Send,
-          T::Error: Into<crate::Error>
+where
+    T: HttpBody + Send + 'static,
+    T::Item: Send,
+    T::Error: Into<crate::Error>,
 {
     type Data = T::Item;
     type Error = T::Error;
