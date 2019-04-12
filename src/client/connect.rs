@@ -83,8 +83,9 @@ where
 impl<A, B, C> Service<A> for Connect<A, B, C>
 where
     C: MakeConnection<A> + 'static,
-    B: HttpBody,
-    LiftBody<B>: hyper::body::Payload,
+    B: HttpBody + Send + 'static,
+    B::Item: Send,
+    B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
 {
     type Response = Connection<B>;
@@ -112,8 +113,9 @@ where
 impl<A, B, C> Future for ConnectFuture<A, B, C>
 where
     C: MakeConnection<A>,
-    B: HttpBody,
-    LiftBody<B>: hyper::body::Payload,
+    B: HttpBody + Send + 'static,
+    B::Item: Send,
+    B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
 {
     type Item = Connection<B>;

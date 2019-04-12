@@ -13,10 +13,6 @@ use tower_service::Service;
 
 pub use hyper::server::conn::Http;
 
-// Known bug in rustc: https://github.com/rust-lang/rust/issues/18290
-#[allow(dead_code)]
-type Error = Box<dyn std::error::Error + Send + Sync>;
-
 /// Server implemenation for hyper
 #[derive(Debug)]
 pub struct Server<S, B> {
@@ -28,9 +24,9 @@ impl<S, B> Server<S, B>
 where
     B: HttpBody + Send + 'static,
     B::Item: Send,
-    B::Error: Into<Box<std::error::Error + Send + Sync>>,
+    B::Error: Into<crate::Error>,
     S: MakeService<(), Request<LiftBody<Body>>, Response = Response<B>> + Send + 'static,
-    S::Error: Into<Error> + 'static,
+    S::Error: Into<crate::Error> + 'static,
     S::Future: Send + 'static,
     S::Service: Service<Request<LiftBody<Body>>> + Send + 'static,
     <S::Service as Service<Request<LiftBody<Body>>>>::Future: Send + 'static,
@@ -98,9 +94,9 @@ impl<T, B> HyperService for Lift<T, B>
 where
     B: HttpBody + Send + 'static,
     B::Item: Send,
-    B::Error: Into<Box<std::error::Error + Send + Sync>>,
+    B::Error: Into<crate::Error>,
     T: HttpService<LiftBody<Body>, ResponseBody = B> + Send + 'static,
-    T::Error: Into<Error> + 'static,
+    T::Error: Into<crate::Error> + 'static,
     T::Future: Send + 'static,
 {
     type ReqBody = Body;

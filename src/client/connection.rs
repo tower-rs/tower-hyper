@@ -33,25 +33,25 @@ impl<B> Service<Request<B>> for Connection<B>
 where
     B: HttpBody + Send + 'static,
     B::Item: Send,
-    B::Error: Into<Box<std::error::Error + Send + Sync>>,
+    B::Error: Into<crate::Error>,
 {
     type Response = Response<LiftBody<hyper::Body>>;
     type Error = hyper::Error;
-    type Future = LiftResponseFuture<conn::ResponseFuture>;
+    type Future = ResponseFuture<conn::ResponseFuture>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         self.sender.poll_ready()
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        LiftResponseFuture(self.sender.send_request(req.map(LiftBody::new)))
+        ResponseFuture(self.sender.send_request(req.map(LiftBody::new)))
     }
 }
 
 /// Lift a hyper ResponseFuture to one which returns LiftBody
-pub struct LiftResponseFuture<F>(pub(crate) F);
+pub struct ResponseFuture<F>(pub(crate) F);
 
-impl<F> Future for LiftResponseFuture<F>
+impl<F> Future for ResponseFuture<F>
     where F: Future<Item=Response<hyper::Body>, Error=hyper::Error>,
 {
     type Item = Response<LiftBody<hyper::Body>>;
@@ -68,8 +68,8 @@ impl<F> Future for LiftResponseFuture<F>
 }
 
 
-impl<F: fmt::Debug> fmt::Debug for LiftResponseFuture<F> {
+impl<F: fmt::Debug> fmt::Debug for ResponseFuture<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "LiftResponseFuture<{:?}>", self.0)
+        write!(f, "ResponseFuture<{:?}>", self.0)
     }
 }

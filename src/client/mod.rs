@@ -36,7 +36,7 @@ impl<B> Default for Client<HttpConnector, B>
     where
         B: HttpBody + Send + 'static,
         B::Item: Send,
-        B::Error: Into<Box<std::error::Error + Send + Sync>>,
+        B::Error: Into<crate::Error>,
 {
     fn default() -> Self {
         Self::new()
@@ -47,7 +47,7 @@ impl<B> Client<HttpConnector, B>
     where
         B: HttpBody + Send + 'static,
         B::Item: Send,
-        B::Error: Into<Box<std::error::Error + Send + Sync>>,
+        B::Error: Into<crate::Error>,
 
 {
     /// Create a new client, using the default hyper settings
@@ -85,11 +85,11 @@ where
     C::Future: 'static,
     B: HttpBody + Send + 'static,
     B::Item: Send,
-    B::Error: Into<Box<std::error::Error + Send + Sync>>,
+    B::Error: Into<crate::Error>,
 {
     type Response = Response<LiftBody<Body>>;
     type Error = hyper::Error;
-    type Future = connection::LiftResponseFuture<ResponseFuture>;
+    type Future = connection::ResponseFuture<ResponseFuture>;
 
     /// Poll to see if the service is ready, since `hyper::Client`
     /// already handles this internally this will always return ready
@@ -100,6 +100,6 @@ where
     /// Send the sepcficied request to the inner `hyper::Client`
     fn call(&mut self, req: Request<B>) -> Self::Future {
         let fut = self.inner.request(req.map(LiftBody::new));
-        connection::LiftResponseFuture(fut)
+        connection::ResponseFuture(fut)
     }
 }

@@ -39,7 +39,7 @@ struct Svc;
 impl<B> Service<Request<B>> for Svc
     where B: tower_http::Body
 {
-    type Response = Response<Vec<u8>>;
+    type Response = Response<B>;
     type Error = hyper::Error;
     type Future = future::FutureResult<Self::Response, Self::Error>;
 
@@ -47,9 +47,8 @@ impl<B> Service<Request<B>> for Svc
         Ok(().into())
     }
 
-    fn call(&mut self, _req: Request<B>) -> Self::Future {
-        // let body = LiftBody::new(Body::from("Hello World!"));
-        let body = b"Hello World!".to_vec();
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        let body = req.into_body();
         let res = Response::new(body);
         future::ok(res)
     }
