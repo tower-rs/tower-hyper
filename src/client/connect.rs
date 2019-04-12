@@ -1,7 +1,7 @@
 use super::Connection;
+use crate::body::LiftBody;
 use futures::future::Executor;
 use futures::{try_ready, Async, Future, Poll};
-use hyper::body::Payload;
 use hyper::client::conn::{Builder, Handshake};
 use hyper::Error;
 use log::error;
@@ -10,6 +10,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use tokio_executor::DefaultExecutor;
 use tower::MakeConnection;
+use tower_http::Body as HttpBody;
 use tower_service::Service;
 
 /// Creates a `hyper` connection
@@ -28,7 +29,7 @@ pub struct Connect<A, B, C> {
 /// or error
 pub struct ConnectFuture<A, B, C>
 where
-    B: Payload,
+    B: HttpBody,
     C: MakeConnection<A>,
 {
     state: State<A, B, C>,
@@ -37,11 +38,11 @@ where
 
 enum State<A, B, C>
 where
-    B: Payload,
+    B: HttpBody,
     C: MakeConnection<A>,
 {
     Connect(C::Future),
-    Handshake(Handshake<C::Connection, B>),
+    Handshake(Handshake<C::Connection, LiftBody<B>>),
 }
 
 /// The error produced from creating a connection
@@ -61,7 +62,7 @@ pub enum ConnectError<T> {
 impl<A, B, C> Connect<A, B, C>
 where
     C: MakeConnection<A>,
-    B: Payload,
+    B: HttpBody,
     C::Connection: Send + 'static,
 {
     /// Create a new `Connect`.
@@ -82,7 +83,9 @@ where
 impl<A, B, C> Service<A> for Connect<A, B, C>
 where
     C: MakeConnection<A> + 'static,
-    B: Payload + 'static,
+    B: HttpBody + Send + 'static,
+    B::Item: Send,
+    B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
 {
     type Response = Connection<B>;
@@ -93,7 +96,7 @@ where
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         self.inner
             .poll_ready()
-            .map_err(|e| ConnectError::Connect(e))
+            .map_err(ConnectError::Connect)
     }
 
     /// Obtains a Connection on a single plaintext h2 connection to a remote.
@@ -110,7 +113,9 @@ where
 impl<A, B, C> Future for ConnectFuture<A, B, C>
 where
     C: MakeConnection<A>,
-    B: Payload,
+    B: HttpBody + Send + 'static,
+    B::Item: Send,
+    B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
 {
     type Item = Connection<B>;
@@ -146,7 +151,7 @@ where
 impl<A, B, C> fmt::Debug for ConnectFuture<A, B, C>
 where
     C: MakeConnection<A>,
-    B: Payload,
+    B: HttpBody,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("ConnectFuture")

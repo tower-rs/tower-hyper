@@ -17,3 +17,8 @@ pub mod retry;
 pub mod server;
 /// Util for working with hyper and tower
 pub mod util;
+
+
+// Known bug in rustc: https://github.com/rust-lang/rust/issues/18290
+#[allow(dead_code)]
+pub(crate) type Error = Box<dyn std::error::Error + Send + Sync>;

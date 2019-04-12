@@ -1,9 +1,10 @@
 //! Provides retry based utilities
-
+use crate::body::LiftBody;
 use futures::{future, Async, Poll};
 use http::{Request, Response};
-use hyper::body::{Chunk, Payload};
+use hyper::body::Chunk;
 use std::marker::PhantomData;
+use tower_http::Body as HttpBody;
 use tower_retry::Policy;
 
 /// A simple retry policy for hyper bases requests.
@@ -21,6 +22,14 @@ pub struct RetryPolicy<E> {
 pub trait TryClone: Sized {
     /// Attempt to clone
     fn try_clone(&self) -> Option<Self>;
+}
+
+impl<C> TryClone for C
+    where C: Clone
+{
+    fn try_clone(&self) -> Option<Self> {
+        Some(self.clone())
+    }
 }
 
 /// A specialized Body for hyper
@@ -46,16 +55,16 @@ impl<E> RetryPolicy<E> {
     }
 }
 
-impl<T, E> Policy<Request<T>, Response<hyper::Body>, E> for RetryPolicy<E>
+impl<T, E> Policy<Request<T>, Response<LiftBody<hyper::Body>>, E> for RetryPolicy<E>
 where
-    T: Into<hyper::Body> + TryClone,
+    T: HttpBody + TryClone
 {
     type Future = future::FutureResult<Self, ()>;
 
     fn retry(
         &self,
         _: &Request<T>,
-        result: Result<&Response<hyper::Body>, &E>,
+        result: Result<&Response<LiftBody<hyper::Body>>, &E>,
     ) -> Option<Self::Future> {
         if self.attempts == 0 {
             // We ran out of retries, hence us returning none.
@@ -87,10 +96,9 @@ where
                 *clone.headers_mut() = req.headers().clone();
                 *clone.method_mut() = req.method().clone();
                 *clone.method_mut() = req.method().clone();
-                *clone.version_mut() = req.version().clone();
+                *clone.version_mut() = req.version();
                 Some(clone)
             }
-
             None => None,
         }
     }
@@ -105,14 +113,14 @@ impl<E> Clone for RetryPolicy<E> {
     }
 }
 
-impl<B> Payload for Body<B>
+impl<B> HttpBody for Body<B>
 where
     B: Into<Chunk> + Send + 'static,
 {
-    type Data = hyper::body::Chunk;
+    type Item = hyper::body::Chunk;
     type Error = hyper::Error;
 
-    fn poll_data(&mut self) -> Poll<Option<Self::Data>, Self::Error> {
+    fn poll_buf(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         match self.body.take() {
             Some(body) => {
                 let body = Some(body.into());
@@ -134,15 +142,6 @@ where
 {
     fn from(b: B) -> Body<B> {
         Body { body: Some(b) }
-    }
-}
-
-impl<B> Into<hyper::Body> for Body<B>
-where
-    B: Into<Chunk> + Sized,
-{
-    fn into(self) -> hyper::Body {
-        hyper::Body::from(self.body.unwrap().into())
     }
 }
 

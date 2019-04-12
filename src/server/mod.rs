@@ -2,37 +2,41 @@
 
 use crate::body::LiftBody;
 use futures::Future;
-use hyper::service::Service as HyperService;
 use hyper::Body;
+use hyper::service::Service as HyperService;
 use hyper::{Request, Response};
 use tokio_io::{AsyncRead, AsyncWrite};
 use tower::MakeService;
 use tower_http::HttpService;
+use tower_http::Body as HttpBody;
 use tower_service::Service;
 
 pub use hyper::server::conn::Http;
 
-// Known bug in rustc: https://github.com/rust-lang/rust/issues/18290
-#[allow(dead_code)]
-type Error = Box<dyn std::error::Error + Send + Sync>;
-
 /// Server implemenation for hyper
 #[derive(Debug)]
-pub struct Server<S> {
+pub struct Server<S, B> {
     maker: S,
+    _marker: std::marker::PhantomData<B>,
 }
 
-impl<S> Server<S>
+impl<S, B> Server<S, B>
 where
-    S: MakeService<(), Request<Body>, Response = Response<LiftBody<Body>>> + Send + 'static,
-    S::Error: Into<Error> + 'static,
+    B: HttpBody + Send + 'static,
+    B::Item: Send,
+    B::Error: Into<crate::Error>,
+    S: MakeService<(), Request<LiftBody<Body>>, Response = Response<B>> + Send + 'static,
+    S::Error: Into<crate::Error> + 'static,
     S::Future: Send + 'static,
-    S::Service: Service<Request<Body>> + Send + 'static,
-    <S::Service as Service<Request<Body>>>::Future: Send + 'static,
+    S::Service: Service<Request<LiftBody<Body>>> + Send + 'static,
+    <S::Service as Service<Request<LiftBody<Body>>>>::Future: Send + 'static,
 {
     /// Create a new server from a `MakeService`
     pub fn new(maker: S) -> Self {
-        Server { maker }
+        Server {
+            maker,
+            _marker: std::marker::PhantomData
+        }
     }
 
     /// Serve the `io` stream via default hyper http settings
@@ -62,31 +66,41 @@ where
             .map_err(|_| unimplemented!())
             .and_then(move |service| {
                 let service = Lift::new(service);
-                http.serve_connection(io, service)
+                http.serve_connection::<Lift<S::Service, B>, I, LiftBody<B>>(io, service)
             });
 
         Box::new(fut)
     }
 }
 
-struct Lift<T> {
+struct Lift<T, B> {
     inner: T,
+    _marker: std::marker::PhantomData<B>,
 }
 
-impl<T> Lift<T> {
+impl<T, B> Lift<T, B> {
     pub fn new(inner: T) -> Self {
-        Lift { inner }
+        Lift { 
+            inner,
+            _marker: std::marker::PhantomData,
+        }
     }
 }
 
-impl<T> HyperService for Lift<T>
+// Lift takes in a service on `LiftBody<Body> -> B` (both implement http::Body)
+// and returns a `hyper::Service` which instead takes in `Request<Body>`
+// and outputs `Response<LiftBody<B>>` (which both implement payload).
+impl<T, B> HyperService for Lift<T, B>
 where
-    T: HttpService<Body, ResponseBody = LiftBody<Body>> + Send + 'static,
-    T::Error: Into<Error> + 'static,
+    B: HttpBody + Send + 'static,
+    B::Item: Send,
+    B::Error: Into<crate::Error>,
+    T: HttpService<LiftBody<Body>, ResponseBody = B> + Send + 'static,
+    T::Error: Into<crate::Error> + 'static,
     T::Future: Send + 'static,
 {
     type ReqBody = Body;
-    type ResBody = Body;
+    type ResBody = LiftBody<B>;
     type Error = hyper::Error;
     // type Future = T::Future;
     type Future = Box<Future<Item = Response<Self::ResBody>, Error = Self::Error> + Send + 'static>;
@@ -94,9 +108,11 @@ where
     fn call(&mut self, request: Request<Self::ReqBody>) -> Self::Future {
         let fut = self
             .inner
-            .call(request)
-            .map(|r| r.map(LiftBody::into_inner))
-            .map_err(|_| unimplemented!());
+            .call(request.map(LiftBody::new))
+            .map(|r| r.map(LiftBody::new))
+            .map_err(|_e| {
+                unimplemented!()
+            });
 
         Box::new(fut)
     }

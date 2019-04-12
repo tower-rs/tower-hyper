@@ -13,7 +13,7 @@ use tower_service::Service;
 /// # use hyper::client::HttpConnector;
 /// let connector = Connector::new(HttpConnector::new(1));
 /// let mut hyper = Connect::new(connector, Builder::new());
-/// # let hyper: Connect<hyper::client::connect::Destination, hyper::Body, Connector<HttpConnector>> = hyper;
+/// # let hyper: Connect<hyper::client::connect::Destination, Vec<u8>, Connector<HttpConnector>> = hyper;
 /// ```
 #[derive(Debug)]
 pub struct Connector<C> {
