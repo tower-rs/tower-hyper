@@ -1,4 +1,4 @@
-use crate::body::LiftBody;
+use crate::body::{Body, LiftBody};
 use futures::{Future, Poll};
 use http::{Request, Response};
 use hyper::client::conn;
@@ -35,7 +35,7 @@ where
     B::Item: Send,
     B::Error: Into<crate::Error>,
 {
-    type Response = Response<LiftBody<hyper::Body>>;
+    type Response = Response<Body>;
     type Error = hyper::Error;
     type Future = ResponseFuture<conn::ResponseFuture>;
 
@@ -44,7 +44,7 @@ where
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        ResponseFuture(self.sender.send_request(req.map(LiftBody::new)))
+        ResponseFuture(self.sender.send_request(req.map(LiftBody::from)))
     }
 }
 
@@ -52,21 +52,21 @@ where
 pub struct ResponseFuture<F>(pub(crate) F);
 
 impl<F> Future for ResponseFuture<F>
-    where F: Future<Item=Response<hyper::Body>, Error=hyper::Error>,
+where
+    F: Future<Item = Response<hyper::Body>, Error = hyper::Error>,
 {
-    type Item = Response<LiftBody<hyper::Body>>;
+    type Item = Response<Body>;
     type Error = hyper::Error;
 
     #[inline]
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         match self.0.poll() {
-            Ok(futures::Async::Ready(body)) => Ok(futures::Async::Ready(body.map(LiftBody::new))),
+            Ok(futures::Async::Ready(body)) => Ok(futures::Async::Ready(body.map(Body::from))),
             Ok(futures::Async::NotReady) => Ok(futures::Async::NotReady),
             Err(e) => Err(e),
         }
     }
 }
-
 
 impl<F: fmt::Debug> fmt::Debug for ResponseFuture<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

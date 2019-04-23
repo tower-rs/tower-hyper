@@ -1,14 +1,14 @@
 //! The server porition of tower hyper
 
-use crate::body::LiftBody;
+use crate::body::{Body, LiftBody};
 use futures::Future;
-use hyper::Body;
 use hyper::service::Service as HyperService;
 use hyper::{Request, Response};
+use std::marker::PhantomData;
 use tokio_io::{AsyncRead, AsyncWrite};
 use tower::MakeService;
-use tower_http::HttpService;
 use tower_http::Body as HttpBody;
+use tower_http::HttpService;
 use tower_service::Service;
 
 pub use hyper::server::conn::Http;
@@ -17,7 +17,7 @@ pub use hyper::server::conn::Http;
 #[derive(Debug)]
 pub struct Server<S, B> {
     maker: S,
-    _marker: std::marker::PhantomData<B>,
+    _pd: PhantomData<B>,
 }
 
 impl<S, B> Server<S, B>
@@ -25,17 +25,17 @@ where
     B: HttpBody + Send + 'static,
     B::Item: Send,
     B::Error: Into<crate::Error>,
-    S: MakeService<(), Request<LiftBody<Body>>, Response = Response<B>> + Send + 'static,
+    S: MakeService<(), Request<Body>, Response = Response<B>> + Send + 'static,
     S::Error: Into<crate::Error> + 'static,
     S::Future: Send + 'static,
-    S::Service: Service<Request<LiftBody<Body>>> + Send + 'static,
-    <S::Service as Service<Request<LiftBody<Body>>>>::Future: Send + 'static,
+    S::Service: Service<Request<Body>> + Send + 'static,
+    <S::Service as Service<Request<Body>>>::Future: Send + 'static,
 {
     /// Create a new server from a `MakeService`
     pub fn new(maker: S) -> Self {
         Server {
             maker,
-            _marker: std::marker::PhantomData
+            _pd: PhantomData,
         }
     }
 
@@ -66,7 +66,7 @@ where
             .map_err(|_| unimplemented!())
             .and_then(move |service| {
                 let service = Lift::new(service);
-                http.serve_connection::<Lift<S::Service, B>, I, LiftBody<B>>(io, service)
+                http.serve_connection(io, service)
             });
 
         Box::new(fut)
@@ -80,7 +80,7 @@ struct Lift<T, B> {
 
 impl<T, B> Lift<T, B> {
     pub fn new(inner: T) -> Self {
-        Lift { 
+        Lift {
             inner,
             _marker: std::marker::PhantomData,
         }
@@ -95,11 +95,11 @@ where
     B: HttpBody + Send + 'static,
     B::Item: Send,
     B::Error: Into<crate::Error>,
-    T: HttpService<LiftBody<Body>, ResponseBody = B> + Send + 'static,
+    T: HttpService<Body, ResponseBody = B> + Send + 'static,
     T::Error: Into<crate::Error> + 'static,
     T::Future: Send + 'static,
 {
-    type ReqBody = Body;
+    type ReqBody = hyper::Body;
     type ResBody = LiftBody<B>;
     type Error = hyper::Error;
     // type Future = T::Future;
@@ -108,11 +108,9 @@ where
     fn call(&mut self, request: Request<Self::ReqBody>) -> Self::Future {
         let fut = self
             .inner
-            .call(request.map(LiftBody::new))
-            .map(|r| r.map(LiftBody::new))
-            .map_err(|_e| {
-                unimplemented!()
-            });
+            .call(request.map(Body::from))
+            .map(|r| r.map(LiftBody::from))
+            .map_err(|_e| unimplemented!());
 
         Box::new(fut)
     }
