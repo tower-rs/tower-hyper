@@ -11,14 +11,13 @@
 
 pub mod body;
 pub mod client;
-/// Contains ref retry logic
-#[cfg(feature = "retry")]
-pub mod retry;
 pub mod server;
-/// Util for working with hyper and tower
 pub mod util;
-
 
 // Known bug in rustc: https://github.com/rust-lang/rust/issues/18290
 #[allow(dead_code)]
 pub(crate) type Error = Box<dyn std::error::Error + Send + Sync>;
+
+pub use body::Body;
+pub use client::{Client, Connect, Connection};
+pub use server::Server;

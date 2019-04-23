@@ -9,17 +9,19 @@
 
 mod connect;
 mod connection;
+mod future;
 
 pub use self::connect::{Connect, ConnectError};
-pub use self::connection::{Connection, ResponseFuture};
+pub use self::connection::Connection;
+use self::future::ResponseFuture;
 pub use hyper::client::conn::Builder;
 
 use crate::body::{Body, LiftBody};
 use futures::{Async, Poll};
-use http::{Request, Response};
 use hyper::{
     client::connect::Connect as HyperConnect,
     client::{self, HttpConnector},
+    Request, Response,
 };
 use tower_http::Body as HttpBody;
 use tower_service::Service;
@@ -33,17 +35,6 @@ pub struct Client<C, B> {
     inner: hyper::Client<C, LiftBody<B>>,
 }
 
-impl<B> Default for Client<HttpConnector, B>
-where
-    B: HttpBody + Send + 'static,
-    B::Item: Send,
-    B::Error: Into<crate::Error>,
-{
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl<B> Client<HttpConnector, B>
 where
     B: HttpBody + Send + 'static,
@@ -53,7 +44,7 @@ where
     /// Create a new client, using the default hyper settings
     pub fn new() -> Self {
         let inner = hyper::Client::builder().build_http();
-        Self { inner }
+        Client { inner }
     }
 }
 
@@ -99,7 +90,7 @@ where
 
     /// Send the sepcficied request to the inner `hyper::Client`
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        let fut = self.inner.request(req.map(LiftBody::from));
-        ResponseFuture(fut)
+        let inner = self.inner.request(req.map(LiftBody::from));
+        ResponseFuture { inner }
     }
 }

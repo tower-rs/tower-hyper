@@ -1,11 +1,10 @@
+use super::ResponseFuture;
 use crate::body::{Body, LiftBody};
-use futures::{Future, Poll};
+use futures::Poll;
 use http::{Request, Response};
 use hyper::client::conn;
 use tower_http::Body as HttpBody;
 use tower_service::Service;
-
-use std::fmt;
 
 /// The connection provided from `hyper`
 ///
@@ -44,32 +43,7 @@ where
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        ResponseFuture(self.sender.send_request(req.map(LiftBody::from)))
-    }
-}
-
-/// Lift a hyper ResponseFuture to one which returns LiftBody
-pub struct ResponseFuture<F>(pub(crate) F);
-
-impl<F> Future for ResponseFuture<F>
-where
-    F: Future<Item = Response<hyper::Body>, Error = hyper::Error>,
-{
-    type Item = Response<Body>;
-    type Error = hyper::Error;
-
-    #[inline]
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        match self.0.poll() {
-            Ok(futures::Async::Ready(body)) => Ok(futures::Async::Ready(body.map(Body::from))),
-            Ok(futures::Async::NotReady) => Ok(futures::Async::NotReady),
-            Err(e) => Err(e),
-        }
-    }
-}
-
-impl<F: fmt::Debug> fmt::Debug for ResponseFuture<F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ResponseFuture<{:?}>", self.0)
+        let inner = self.sender.send_request(req.map(LiftBody::from));
+        ResponseFuture { inner }
     }
 }

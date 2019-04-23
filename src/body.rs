@@ -43,13 +43,6 @@ where
     }
 }
 
-// impl Body {
-//     /// Lifts the inner `T`
-//     pub fn new(inner: T) -> Self {
-//         Body { inner }
-//     }
-// }
-
 impl From<hyper::Body> for Body {
     fn from(inner: hyper::Body) -> Self {
         Body { inner }
@@ -57,7 +50,7 @@ impl From<hyper::Body> for Body {
 }
 
 impl Body {
-    /// Get the inner wrapped payload
+    /// Get the inner wrapped `hyper::Body`.
     pub fn into_inner(self) -> hyper::Body {
         self.inner
     }
