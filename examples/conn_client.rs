@@ -21,7 +21,7 @@ fn main() {
         hyper
             .make_service(dst)
             .map_err(|err| eprintln!("Connect Error {:?}", err))
-            .and_then(|conn| Buffer::new(conn, 1).map_err(|_| panic!("Unable to spawn!")))
+            .and_then(|conn| Ok(Buffer::new(conn, 1)))
             .and_then(|mut conn| {
                 conn.call(Request::new(Vec::new())) // Empty request, but `Vec<u8>` implements `tower_http::Body`
                     .map_err(|e| eprintln!("Call Error: {}", e))
