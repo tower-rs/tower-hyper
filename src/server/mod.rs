@@ -53,6 +53,12 @@ struct LiftService<T, B> {
     _pd: PhantomData<B>,
 }
 
+#[derive(Debug)]
+struct LiftServiceFuture<F, B> {
+    inner: F,
+    _pd: PhantomData<fn() -> B>,
+}
+
 impl<S, B> Server<S, B>
 where
     S: MakeService<(), Request<Body>, Response = Response<B>>,
@@ -170,15 +176,35 @@ where
     type ReqBody = hyper::Body;
     type ResBody = LiftBody<B>;
     type Error = crate::Error;
-    type Future = Box<Future<Item = Response<Self::ResBody>, Error = Self::Error> + Send + 'static>;
+    type Future = LiftServiceFuture<T::Future, B>;
+
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        self.inner.poll_ready().map_err(Into::into)
+    }
 
     fn call(&mut self, request: Request<Self::ReqBody>) -> Self::Future {
-        let fut = self
-            .inner
-            .call(request.map(Body::from))
-            .map(|r| r.map(LiftBody::from))
-            .map_err(Into::into);
+        let fut = self.inner.call(request.map(Body::from));
 
-        Box::new(fut)
+        LiftServiceFuture {
+            inner: fut,
+            _pd: PhantomData,
+        }
+    }
+}
+
+impl<F, B> Future for LiftServiceFuture<F, B>
+where
+    F: Future<Item = Response<B>>,
+    F::Error: Into<crate::Error>,
+    B: HttpBody + Send,
+    B::Item: Send,
+    B::Error: Into<crate::Error>,
+{
+    type Item = Response<LiftBody<B>>;
+    type Error = crate::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let response = try_ready!(self.inner.poll().map_err(Into::into));
+        Ok(response.map(LiftBody::from).into())
     }
 }
