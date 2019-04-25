@@ -9,16 +9,19 @@
 
 mod connect;
 mod connection;
+mod future;
 
 pub use self::connect::{Connect, ConnectError};
 pub use self::connection::Connection;
+use self::future::ResponseFuture;
 pub use hyper::client::conn::Builder;
 
-use crate::body::LiftBody;
+use crate::body::{Body, LiftBody};
 use futures::{Async, Poll};
-use http::{Request, Response};
 use hyper::{
-    client::connect::Connect as HyperConnect, client::HttpConnector, client::ResponseFuture, Body,
+    client::connect::Connect as HyperConnect,
+    client::{self, HttpConnector},
+    Request, Response,
 };
 use tower_http::Body as HttpBody;
 use tower_service::Service;
@@ -32,28 +35,16 @@ pub struct Client<C, B> {
     inner: hyper::Client<C, LiftBody<B>>,
 }
 
-impl<B> Default for Client<HttpConnector, B>
-    where
-        B: HttpBody + Send + 'static,
-        B::Item: Send,
-        B::Error: Into<crate::Error>,
-{
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl<B> Client<HttpConnector, B>
-    where
-        B: HttpBody + Send + 'static,
-        B::Item: Send,
-        B::Error: Into<crate::Error>,
-
+where
+    B: HttpBody + Send + 'static,
+    B::Item: Send,
+    B::Error: Into<crate::Error>,
 {
     /// Create a new client, using the default hyper settings
     pub fn new() -> Self {
         let inner = hyper::Client::builder().build_http();
-        Self { inner }
+        Client { inner }
     }
 }
 
@@ -87,9 +78,9 @@ where
     B::Item: Send,
     B::Error: Into<crate::Error>,
 {
-    type Response = Response<LiftBody<Body>>;
+    type Response = Response<Body>;
     type Error = hyper::Error;
-    type Future = connection::ResponseFuture<ResponseFuture>;
+    type Future = ResponseFuture<client::ResponseFuture>;
 
     /// Poll to see if the service is ready, since `hyper::Client`
     /// already handles this internally this will always return ready
@@ -99,7 +90,7 @@ where
 
     /// Send the sepcficied request to the inner `hyper::Client`
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        let fut = self.inner.request(req.map(LiftBody::new));
-        connection::ResponseFuture(fut)
+        let inner = self.inner.request(req.map(LiftBody::from));
+        ResponseFuture { inner }
     }
 }

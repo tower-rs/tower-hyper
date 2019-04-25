@@ -1,6 +1,10 @@
-use futures::{Future, Poll, Async, try_ready};
-use hyper::client::connect::{Connect, Destination};
+//! Util for working with hyper and tower
+
+use futures::{try_ready, Async, Future, Poll};
+use hyper::client::connect::Connect;
 use tower_service::Service;
+
+pub use hyper::client::connect::{Destination, HttpConnector};
 
 /// A bridge between `hyper::client::connect::Connect` types
 /// and `tower_util::MakeConnection`.
@@ -36,7 +40,7 @@ where
 {
     /// Construct a new connector from a `hyper::client::connect::Connect`
     pub fn new(inner: C) -> Self {
-        Self { inner }
+        Connector { inner }
     }
 }
 

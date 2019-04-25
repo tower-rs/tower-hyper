@@ -1,6 +1,7 @@
 use futures::{future, Future, Poll, Stream};
 use hyper::{Request, Response};
 use tokio_tcp::TcpListener;
+use tower_hyper::body::Body;
 use tower_hyper::server::Server;
 use tower_service::Service;
 
@@ -36,10 +37,8 @@ fn main() {
 }
 
 struct Svc;
-impl<B> Service<Request<B>> for Svc
-    where B: tower_http::Body
-{
-    type Response = Response<B>;
+impl Service<Request<Body>> for Svc {
+    type Response = Response<Body>;
     type Error = hyper::Error;
     type Future = future::FutureResult<Self::Response, Self::Error>;
 
@@ -47,9 +46,9 @@ impl<B> Service<Request<B>> for Svc
         Ok(().into())
     }
 
-    fn call(&mut self, req: Request<B>) -> Self::Future {
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
         let body = req.into_body();
-        let res = Response::new(body);
+        let res = Response::new(Body::from(body));
         future::ok(res)
     }
 }
