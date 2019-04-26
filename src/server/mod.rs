@@ -56,7 +56,7 @@ struct LiftService<T, B> {
 #[derive(Debug)]
 struct LiftServiceFuture<F, B> {
     inner: F,
-    _pd: PhantomData<fn() -> B>,
+    _pd: PhantomData<B>,
 }
 
 impl<S, B> Server<S, B>
