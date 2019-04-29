@@ -2,6 +2,7 @@ use super::Connection;
 use crate::body::LiftBody;
 use futures::future::Executor;
 use futures::{try_ready, Async, Future, Poll};
+use http::Version;
 use hyper::client::conn::{Builder, Handshake};
 use hyper::Error;
 use log::error;
@@ -9,8 +10,7 @@ use std::error::Error as StdError;
 use std::fmt;
 use std::marker::PhantomData;
 use tokio_executor::DefaultExecutor;
-use tower::MakeConnection;
-use tower_http::Body as HttpBody;
+use tower_http::{Body as HttpBody, HttpConnection, HttpMakeConnection};
 use tower_service::Service;
 
 /// Creates a `hyper` connection
@@ -21,7 +21,7 @@ use tower_service::Service;
 #[derive(Debug)]
 pub struct Connect<A, B, C> {
     inner: C,
-    builder: Builder,
+    builder: Option<Builder>,
     _pd: PhantomData<(A, B)>,
 }
 
@@ -30,16 +30,16 @@ pub struct Connect<A, B, C> {
 pub struct ConnectFuture<A, B, C>
 where
     B: HttpBody,
-    C: MakeConnection<A>,
+    C: HttpMakeConnection<A>,
 {
     state: State<A, B, C>,
-    builder: Builder,
+    builder: Option<Builder>,
 }
 
 enum State<A, B, C>
 where
     B: HttpBody,
-    C: MakeConnection<A>,
+    C: HttpMakeConnection<A>,
 {
     Connect(C::Future),
     Handshake(Handshake<C::Connection, LiftBody<B>>),
@@ -61,7 +61,7 @@ pub enum ConnectError<T> {
 
 impl<A, B, C> Connect<A, B, C>
 where
-    C: MakeConnection<A>,
+    C: HttpMakeConnection<A>,
     B: HttpBody,
     C::Connection: Send + 'static,
 {
@@ -71,10 +71,19 @@ where
     /// (`AsyncRead` + `AsyncWrite`). For each new client service returned, a
     /// Service is returned that can be driven by `poll_service` and to send
     /// requests via `call`.
-    pub fn new(inner: C, builder: Builder) -> Self {
+    pub fn new(inner: C) -> Self {
         Connect {
             inner,
-            builder,
+            builder: None,
+            _pd: PhantomData,
+        }
+    }
+
+    /// Create a new `Connect` with a builder.
+    pub fn with_builder(inner: C, builder: Builder) -> Self {
+        Connect {
+            inner,
+            builder: Some(builder),
             _pd: PhantomData,
         }
     }
@@ -82,7 +91,7 @@ where
 
 impl<A, B, C> Service<A> for Connect<A, B, C>
 where
-    C: MakeConnection<A> + 'static,
+    C: HttpMakeConnection<A> + 'static,
     B: HttpBody + Send + 'static,
     B::Item: Send,
     B::Error: Into<crate::Error>,
@@ -110,7 +119,7 @@ where
 
 impl<A, B, C> Future for ConnectFuture<A, B, C>
 where
-    C: MakeConnection<A>,
+    C: HttpMakeConnection<A>,
     B: HttpBody + Send + 'static,
     B::Item: Send,
     B::Error: Into<crate::Error>,
@@ -140,7 +149,18 @@ where
                 }
             };
 
-            let handshake = self.builder.handshake(io);
+            let handshake = if let Some(builder) = self.builder.take() {
+                builder.handshake(io)
+            } else {
+                let mut builder = Builder::new();
+
+                if Version::HTTP_2 == io.version() {
+                    builder.http2_only(true);
+                }
+
+                builder.handshake(io)
+            };
+
             self.state = State::Handshake(handshake);
         }
     }
@@ -148,7 +168,7 @@ where
 
 impl<A, B, C> fmt::Debug for ConnectFuture<A, B, C>
 where
-    C: MakeConnection<A>,
+    C: HttpMakeConnection<A>,
     B: HttpBody,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
