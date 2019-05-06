@@ -15,9 +15,10 @@ pub use hyper::client::connect::{Destination, HttpConnector};
 /// # use tower_hyper::util::Connector;
 /// # use tower_hyper::client::{Connect, Builder};
 /// # use hyper::client::HttpConnector;
+/// # use tokio_executor::DefaultExecutor;
 /// let connector = Connector::new(HttpConnector::new(1));
 /// let mut hyper = Connect::new(connector, Builder::new());
-/// # let hyper: Connect<hyper::client::connect::Destination, Vec<u8>, Connector<HttpConnector>> = hyper;
+/// # let hyper: Connect<hyper::client::connect::Destination, Vec<u8>, Connector<HttpConnector>, DefaultExecutor> = hyper;
 /// ```
 #[derive(Debug)]
 pub struct Connector<C> {
