@@ -111,7 +111,6 @@ where
     B::Error: Into<crate::Error>,
     T: HttpService<Body, ResponseBody = B>,
     T::Error: Into<crate::Error>,
-    // T::Future: Send + 'static,
 {
     type ReqBody = hyper::Body;
     type ResBody = LiftBody<B>;
