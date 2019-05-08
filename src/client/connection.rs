@@ -2,8 +2,8 @@ use super::ResponseFuture;
 use crate::body::{Body, LiftBody};
 use futures::Poll;
 use http::{Request, Response};
+use http_body::Body as HttpBody;
 use hyper::client::conn;
-use tower_http::Body as HttpBody;
 use tower_service::Service;
 
 /// The connection provided from `hyper`
@@ -31,7 +31,7 @@ where
 impl<B> Service<Request<B>> for Connection<B>
 where
     B: HttpBody + Send + 'static,
-    B::Item: Send,
+    B::Data: Send,
     B::Error: Into<crate::Error>,
 {
     type Response = Response<Body>;

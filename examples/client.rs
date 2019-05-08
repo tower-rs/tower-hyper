@@ -1,15 +1,16 @@
 use futures::{future, Future};
 use http::{Method, Request, Uri};
 use hyper::rt;
+use std::time::Duration;
 use tokio_buf::util::BufStreamExt;
+use tower::{Service, ServiceBuilder, ServiceExt};
 use tower_http::BodyExt;
 use tower_hyper::client::Client;
-use tower_service::Service;
 
 fn main() {
     rt::run(future::lazy(|| {
         let uri = "http://httpbin.org/ip".parse::<Uri>().unwrap();
-        let mut svc = Client::new();
+        let hyper = Client::new();
 
         let request = Request::builder()
             .uri(uri)
@@ -17,7 +18,13 @@ fn main() {
             .body(Vec::new())
             .unwrap();
 
-        svc.call(request)
+        let svc = ServiceBuilder::new()
+            .buffer(5)
+            .timeout(Duration::from_secs(5))
+            .service(hyper);
+
+        svc.ready()
+            .and_then(|mut svc| svc.call(request))
             .map_err(|err| eprintln!("Request Error: {}", err))
             .and_then(|response| {
                 println!("Response Status: {:?}", response.status());

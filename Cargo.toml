@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 futures = "0.1.25"
 http = "0.1"
+http-body = "0.1"
 http-connection = { git = "https://github.com/hyperium/http-connection" }
 log = "0.4"
 hyper = "0.12.28"
@@ -14,11 +15,13 @@ tokio-io = "0.1"
 tokio-buf = "0.1"
 tokio-executor = "0.1"
 tower-service = "0.2"
-tower = { git = "https://github.com/tower-rs/tower" }
-tower-http = { git = "https://github.com/tower-rs/tower-http" }
+tower-util = "0.1"
+# tower-http-util = { git = "https://github.com/tower-rs/tower-http" }
+tower-http-util = { git = "https://github.com/LucioFranco/tower-http", branch = "remove-http-bddy" }
 
 [dev-dependencies]
-tower-buffer = { git = "https://github.com/tower-rs/tower" }
+tower = "0.1"
+tower-http = { git = "https://github.com/LucioFranco/tower-http", branch = "remove-http-bddy" }
 tokio-executor = "0.1"
 tokio-tcp = "0.1"
 pretty_env_logger = "0.2.0"
