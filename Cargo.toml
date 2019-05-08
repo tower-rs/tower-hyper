@@ -20,6 +20,6 @@ tower-http-util = { git = "https://github.com/tower-rs/tower-http" }
 
 [dev-dependencies]
 tower = "0.1"
-tower-http = { git = "https://github.com/LucioFranco/tower-http", branch = "remove-http-bddy" }
+tower-http = { git = "https://github.com/tower-rs/tower-http" }
 tokio-tcp = "0.1"
 pretty_env_logger = "0.2.0"
