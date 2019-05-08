@@ -95,7 +95,7 @@ where
     /// Service is returned that can be driven by `poll_service` and to send
     /// requests via `call`.
     pub fn new(inner: C) -> Self {
-        Connect::with_executor(inner, Builder::new(), DefaultExecutor::current())
+        Connect::with_builder(inner, Builder::new())
     }
 
     /// Create a new `Connect` with a builder.
