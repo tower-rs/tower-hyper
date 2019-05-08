@@ -2,6 +2,7 @@ use super::Connection;
 use crate::body::LiftBody;
 use futures::{future::MapErr, try_ready, Async, Future, Poll};
 use http::Version;
+use http_body::Body as HttpBody;
 use http_connection::HttpConnection;
 use hyper::body::Payload;
 use hyper::client::conn::{Builder, Connection as HyperConnection, Handshake};
@@ -12,7 +13,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use tokio_executor::{DefaultExecutor, TypedExecutor};
 use tokio_io::{AsyncRead, AsyncWrite};
-use tower_http::{Body as HttpBody, HttpMakeConnection};
+use tower_http_util::HttpMakeConnection;
 use tower_service::Service;
 
 /// Creates a `hyper` connection
@@ -133,7 +134,7 @@ impl<A, B, C, E> Service<A> for Connect<A, B, C, E>
 where
     C: HttpMakeConnection<A> + 'static,
     B: HttpBody + Send + 'static,
-    B::Item: Send,
+    B::Data: Send,
     B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
     E: ConnectExecutor<C::Connection, LiftBody<B>> + Clone,
@@ -167,7 +168,7 @@ impl<A, B, C, E> Future for ConnectFuture<A, B, C, E>
 where
     C: HttpMakeConnection<A>,
     B: HttpBody + Send + 'static,
-    B::Item: Send,
+    B::Data: Send,
     B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
     E: ConnectExecutor<C::Connection, LiftBody<B>>,

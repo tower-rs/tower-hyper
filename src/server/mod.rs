@@ -2,15 +2,15 @@
 
 use crate::body::{Body, LiftBody};
 use futures::{try_ready, Future, Poll};
+use http_body::Body as HttpBody;
 use hyper::service::Service as HyperService;
 use hyper::{Request, Response};
 use std::fmt;
 use std::marker::PhantomData;
 use tokio_io::{AsyncRead, AsyncWrite};
-use tower::MakeService;
-use tower_http::Body as HttpBody;
-use tower_http::HttpService;
+use tower_http_util::HttpService;
 use tower_service::Service;
+use tower_util::MakeService;
 
 pub use hyper::server::conn::Http;
 
@@ -54,7 +54,7 @@ where
     S::Service: Service<Request<Body>> + Send,
     <S::Service as Service<Request<Body>>>::Future: Send + 'static,
     B: HttpBody + Send + 'static,
-    B::Item: Send + 'static,
+    B::Data: Send + 'static,
     B::Error: Into<crate::Error> + 'static,
 {
     /// Create a new server from a `MakeService`
@@ -107,7 +107,7 @@ impl<T, B> LiftService<T, B> {
 impl<T, B> HyperService for LiftService<T, B>
 where
     B: HttpBody + Send + 'static,
-    B::Item: Send,
+    B::Data: Send,
     B::Error: Into<crate::Error>,
     T: HttpService<Body, ResponseBody = B>,
     T::Error: Into<crate::Error>,
@@ -136,7 +136,7 @@ where
     F: Future<Item = Response<B>>,
     F::Error: Into<crate::Error>,
     B: HttpBody + Send,
-    B::Item: Send,
+    B::Data: Send,
     B::Error: Into<crate::Error>,
 {
     type Item = Response<LiftBody<B>>;

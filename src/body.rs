@@ -1,8 +1,8 @@
 //! Tower <-> hyper body utilities
 
 use futures::Poll;
+use http_body::Body as HttpBody;
 use hyper::body::Payload;
-use tower_http::Body as HttpBody;
 
 /// Specialized Body that takes a `hyper::Body` and implements `tower_http::Body`.
 #[derive(Debug)]
@@ -25,14 +25,14 @@ impl<T: HttpBody> From<T> for LiftBody<T> {
 impl<T> Payload for LiftBody<T>
 where
     T: HttpBody + Send + 'static,
-    T::Item: Send,
+    T::Data: Send,
     T::Error: Into<crate::Error>,
 {
-    type Data = T::Item;
+    type Data = T::Data;
     type Error = T::Error;
 
     fn poll_data(&mut self) -> Poll<Option<Self::Data>, Self::Error> {
-        self.inner.poll_buf()
+        self.inner.poll_data()
     }
 
     fn poll_trailers(&mut self) -> Poll<Option<hyper::HeaderMap>, Self::Error> {
@@ -57,10 +57,10 @@ impl Body {
 }
 
 impl HttpBody for Body {
-    type Item = hyper::Chunk;
+    type Data = hyper::Chunk;
     type Error = hyper::Error;
 
-    fn poll_buf(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+    fn poll_data(&mut self) -> Poll<Option<Self::Data>, Self::Error> {
         self.inner.poll_data()
     }
 

@@ -1,9 +1,9 @@
 use futures::{future, Future, Poll, Stream};
 use hyper::{Request, Response};
 use tokio_tcp::TcpListener;
+use tower::{Service, ServiceBuilder};
 use tower_hyper::body::Body;
 use tower_hyper::server::Server;
-use tower_service::Service;
 
 fn main() {
     pretty_env_logger::init();
@@ -13,7 +13,9 @@ fn main() {
 
     println!("Listening on http://{}", addr);
 
-    let server = Server::new(MakeSvc);
+    let svc = ServiceBuilder::new().concurrency_limit(5).service(MakeSvc);
+
+    let server = Server::new(svc);
 
     let server = bind
         .incoming()

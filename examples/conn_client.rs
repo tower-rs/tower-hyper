@@ -4,11 +4,10 @@ use hyper::client::connect::{Destination, HttpConnector};
 use hyper::rt;
 use tokio_buf::util::BufStreamExt;
 use tower::MakeService;
-use tower_buffer::Buffer;
+use tower::{Service, ServiceExt};
 use tower_http::BodyExt;
 use tower_hyper::client::Connect;
 use tower_hyper::util::Connector;
-use tower_service::Service;
 
 fn main() {
     pretty_env_logger::init();
@@ -20,9 +19,9 @@ fn main() {
         hyper
             .make_service(dst)
             .map_err(|err| eprintln!("Connect Error {:?}", err))
-            .and_then(|conn| Ok(Buffer::new(conn, 1)))
-            .and_then(|mut conn| {
-                conn.call(Request::new(Vec::new())) // Empty request, but `Vec<u8>` implements `tower_http::Body`
+            .and_then(|conn| {
+                conn.ready()
+                    .and_then(|mut conn| conn.call(Request::new(Vec::new())))
                     .map_err(|e| eprintln!("Call Error: {}", e))
                     .and_then(|response| {
                         println!("Response Status: {:?}", response.status());

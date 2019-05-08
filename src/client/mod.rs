@@ -18,12 +18,12 @@ pub use hyper::client::conn::Builder;
 
 use crate::body::{Body, LiftBody};
 use futures::{Async, Poll};
+use http_body::Body as HttpBody;
 use hyper::{
     client::connect::Connect as HyperConnect,
     client::{self, HttpConnector},
     Request, Response,
 };
-use tower_http::Body as HttpBody;
 use tower_service::Service;
 
 /// The client wrapp for `hyper::Client`
@@ -38,7 +38,7 @@ pub struct Client<C, B> {
 impl<B> Client<HttpConnector, B>
 where
     B: HttpBody + Send + 'static,
-    B::Item: Send,
+    B::Data: Send,
     B::Error: Into<crate::Error>,
 {
     /// Create a new client, using the default hyper settings
@@ -75,7 +75,7 @@ where
     C::Transport: 'static,
     C::Future: 'static,
     B: HttpBody + Send + 'static,
-    B::Item: Send,
+    B::Data: Send,
     B::Error: Into<crate::Error>,
 {
     type Response = Response<Body>;
