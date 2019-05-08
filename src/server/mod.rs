@@ -2,12 +2,10 @@
 
 use crate::body::{Body, LiftBody};
 use futures::{try_ready, Future, Poll};
-use hyper::server::conn::Connection;
 use hyper::service::Service as HyperService;
 use hyper::{Request, Response};
 use std::fmt;
 use std::marker::PhantomData;
-use tokio_executor::DefaultExecutor;
 use tokio_io::{AsyncRead, AsyncWrite};
 use tower::MakeService;
 use tower_http::Body as HttpBody;
@@ -16,6 +14,9 @@ use tower_service::Service;
 
 pub use hyper::server::conn::Http;
 
+/// A stream mapping incoming IOs to new services.
+pub type Serve<E> = Box<Future<Item = (), Error = Error<E>> + Send + 'static>;
+
 /// Server implemenation for hyper
 #[derive(Debug)]
 pub struct Server<S, B> {
@@ -23,28 +24,13 @@ pub struct Server<S, B> {
     _pd: PhantomData<B>,
 }
 
-/// The future that represents the connection.
-pub struct Serve<S, B, I>
-where
-    S: MakeService<(), Request<Body>, Response = Response<B>>,
-    S::Service: Send,
-    S::MakeError: Into<crate::Error> + 'static,
-    S::Error: Into<crate::Error> + 'static,
-    S::Future: Send + 'static,
-    S::Service: Service<Request<Body>> + Send + 'static,
-    <S::Service as Service<Request<Body>>>::Future: Send + 'static,
-    B: HttpBody + Send + 'static,
-    B::Item: Send,
-    B::Error: Into<crate::Error>,
-{
-    state: State<S::Future, Connection<I, LiftService<S::Service, B>, DefaultExecutor>>,
-    http: Http<DefaultExecutor>,
-    io: Option<I>,
-}
-
-enum State<M, S> {
-    Make(M),
-    Call(S),
+/// Error's produced by a `Connection`.
+#[derive(Debug)]
+pub enum Error<E> {
+    /// Error's originating from `hyper`.
+    Protocol(hyper::Error),
+    /// Error's produced from creating the inner service.
+    MakeService(E),
 }
 
 #[derive(Debug)]
@@ -61,15 +47,15 @@ struct LiftServiceFuture<F, B> {
 
 impl<S, B> Server<S, B>
 where
-    S: MakeService<(), Request<Body>, Response = Response<B>>,
+    S: MakeService<(), Request<Body>, Response = Response<B>> + Send + 'static,
     S::MakeError: Into<crate::Error>,
     S::Error: Into<crate::Error>,
     S::Future: Send,
     S::Service: Service<Request<Body>> + Send,
-    <S::Service as Service<Request<Body>>>::Future: Send,
-    B: HttpBody + Send,
-    B::Item: Send,
-    B::Error: Into<crate::Error>,
+    <S::Service as Service<Request<Body>>>::Future: Send + 'static,
+    B: HttpBody + Send + 'static,
+    B::Item: Send + 'static,
+    B::Error: Into<crate::Error> + 'static,
 {
     /// Create a new server from a `MakeService`
     pub fn new(maker: S) -> Self {
@@ -80,75 +66,29 @@ where
     }
 
     /// Serve the `io` stream via default hyper http settings
-    pub fn serve<I>(&mut self, io: I) -> Serve<S, B, I>
+    pub fn serve<I>(&mut self, io: I) -> Serve<S::MakeError>
     where
-        I: AsyncRead + AsyncWrite + 'static,
+        I: AsyncRead + AsyncWrite + Send + 'static,
     {
-        let http = Http::new().with_executor(DefaultExecutor::current());
+        let http = Http::new();
         self.serve_with(io, http)
     }
 
     /// Serve the `io` stream via the provided hyper http settings
-    pub fn serve_with<I>(&mut self, io: I, http: Http<DefaultExecutor>) -> Serve<S, B, I>
+    pub fn serve_with<I>(&mut self, io: I, http: Http) -> Serve<S::MakeError>
     where
-        I: AsyncRead + AsyncWrite + 'static,
+        I: AsyncRead + AsyncWrite + Send + 'static,
     {
-        let mk = self.maker.make_service(());
-        let state = State::Make(mk);
-        let io = Some(io);
-        Serve { state, http, io }
-    }
-}
+        let fut = self
+            .maker
+            .make_service(())
+            .map_err(Error::MakeService)
+            .and_then(move |svc| {
+                let svc = LiftService::new(svc);
+                http.serve_connection(io, svc).map_err(Error::Protocol)
+            });
 
-impl<S, B, I> Future for Serve<S, B, I>
-where
-    S: MakeService<(), Request<Body>, Response = Response<B>>,
-    S::MakeError: Into<crate::Error>,
-    S::Error: Into<crate::Error>,
-    S::Future: Send,
-    S::Service: Service<Request<Body>> + Send,
-    <S::Service as Service<Request<Body>>>::Future: Send,
-    B: HttpBody + Send,
-    B::Item: Send,
-    B::Error: Into<crate::Error>,
-    I: AsyncRead + AsyncWrite + 'static,
-{
-    type Item = ();
-    type Error = crate::Error;
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        loop {
-            match &mut self.state {
-                State::Make(fut) => {
-                    let svc = try_ready!(fut.poll().map_err(Into::into));
-                    let service = LiftService::new(svc);
-                    let io = self.io.take().unwrap();
-                    let fut = self.http.serve_connection(io, service);
-                    self.state = State::Call(fut);
-                    continue;
-                }
-                State::Call(fut) => return fut.poll().map_err(Into::into),
-            }
-        }
-    }
-}
-
-impl<S, B, I> fmt::Debug for Serve<S, B, I>
-where
-    S: MakeService<(), Request<Body>, Response = Response<B>>,
-    S::Service: Send,
-    S::MakeError: Into<crate::Error> + 'static,
-    S::Error: Into<crate::Error> + 'static,
-    S::Future: Send + 'static,
-    S::Service: Service<Request<Body>> + Send + 'static,
-    <S::Service as Service<Request<Body>>>::Future: Send + 'static,
-    B: HttpBody + Send + 'static,
-    B::Item: Send,
-    B::Error: Into<crate::Error>,
-    I: AsyncRead + AsyncWrite + 'static,
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Serve<S, B, I>")
+        Box::new(fut)
     }
 }
 
@@ -169,9 +109,8 @@ where
     B: HttpBody + Send + 'static,
     B::Item: Send,
     B::Error: Into<crate::Error>,
-    T: HttpService<Body, ResponseBody = B> + Send + 'static,
-    T::Error: Into<crate::Error> + 'static,
-    T::Future: Send + 'static,
+    T: HttpService<Body, ResponseBody = B>,
+    T::Error: Into<crate::Error>,
 {
     type ReqBody = hyper::Body;
     type ResBody = LiftBody<B>;
@@ -208,3 +147,14 @@ where
         Ok(response.map(LiftBody::from).into())
     }
 }
+
+impl<E: fmt::Debug> fmt::Display for Error<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            Error::Protocol(why) => f.debug_tuple("Protocol").field(why).finish(),
+            Error::MakeService(why) => f.debug_tuple("MakeService").field(why).finish(),
+        }
+    }
+}
+
+impl<E: fmt::Debug> ::std::error::Error for Error<E> {}

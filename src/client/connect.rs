@@ -1,16 +1,18 @@
 use super::Connection;
 use crate::body::LiftBody;
-use futures::future::Executor;
-use futures::{try_ready, Async, Future, Poll};
+use futures::{future::MapErr, try_ready, Async, Future, Poll};
 use http::Version;
-use hyper::client::conn::{Builder, Handshake};
+use http_connection::HttpConnection;
+use hyper::body::Payload;
+use hyper::client::conn::{Builder, Connection as HyperConnection, Handshake};
 use hyper::Error;
 use log::error;
 use std::error::Error as StdError;
 use std::fmt;
 use std::marker::PhantomData;
-use tokio_executor::DefaultExecutor;
-use tower_http::{Body as HttpBody, HttpConnection, HttpMakeConnection};
+use tokio_executor::{DefaultExecutor, TypedExecutor};
+use tokio_io::{AsyncRead, AsyncWrite};
+use tower_http::{Body as HttpBody, HttpMakeConnection};
 use tower_service::Service;
 
 /// Creates a `hyper` connection
@@ -19,21 +21,32 @@ use tower_service::Service;
 /// a `MakeService` implementation to create connections from some
 /// target `A`
 #[derive(Debug)]
-pub struct Connect<A, B, C> {
+pub struct Connect<A, B, C, E> {
     inner: C,
-    builder: Option<Builder>,
+    builder: Builder,
+    exec: E,
     _pd: PhantomData<(A, B)>,
+}
+
+/// Executor that will spawn the background connection task.
+pub trait ConnectExecutor<T, B>:
+    TypedExecutor<MapErr<HyperConnection<T, B>, fn(hyper::Error) -> ()>>
+where
+    T: AsyncRead + AsyncWrite + Send + 'static,
+    B: Payload + 'static,
+{
 }
 
 /// The future thre represents the eventual connection
 /// or error
-pub struct ConnectFuture<A, B, C>
+pub struct ConnectFuture<A, B, C, E>
 where
     B: HttpBody,
     C: HttpMakeConnection<A>,
 {
     state: State<A, B, C>,
-    builder: Option<Builder>,
+    builder: Builder,
+    exec: E,
 }
 
 enum State<A, B, C>
@@ -57,9 +70,19 @@ pub enum ConnectError<T> {
     SpawnError,
 }
 
+// ==== impl ConnectExecutor ====
+
+impl<E, T, B> ConnectExecutor<T, B> for E
+where
+    T: AsyncRead + AsyncWrite + Send + 'static,
+    B: Payload + 'static,
+    E: TypedExecutor<MapErr<HyperConnection<T, B>, fn(hyper::Error) -> ()>>,
+{
+}
+
 // ===== impl Connect =====
 
-impl<A, B, C> Connect<A, B, C>
+impl<A, B, C> Connect<A, B, C, DefaultExecutor>
 where
     C: HttpMakeConnection<A>,
     B: HttpBody,
@@ -72,34 +95,52 @@ where
     /// Service is returned that can be driven by `poll_service` and to send
     /// requests via `call`.
     pub fn new(inner: C) -> Self {
-        Connect {
-            inner,
-            builder: None,
-            _pd: PhantomData,
-        }
+        Connect::with_executor(inner, Builder::new(), DefaultExecutor::current())
     }
 
     /// Create a new `Connect` with a builder.
     pub fn with_builder(inner: C, builder: Builder) -> Self {
+        Connect::with_executor(inner, builder, DefaultExecutor::current())
+    }
+}
+
+impl<A, B, C, E> Connect<A, B, C, E>
+where
+    C: HttpMakeConnection<A>,
+    B: HttpBody,
+    C::Connection: Send + 'static,
+{
+    /// Create a new `Connect`.
+    ///
+    /// The `C` argument is used to obtain new session layer instances
+    /// (`AsyncRead` + `AsyncWrite`). For each new client service returned, a
+    /// Service is returned that can be driven by `poll_service` and to send
+    /// requests via `call`.
+    ///
+    /// The `E` argument is the executor that the background task for the connection
+    /// will be spawned on.
+    pub fn with_executor(inner: C, builder: Builder, exec: E) -> Self {
         Connect {
             inner,
-            builder: Some(builder),
+            builder,
+            exec,
             _pd: PhantomData,
         }
     }
 }
 
-impl<A, B, C> Service<A> for Connect<A, B, C>
+impl<A, B, C, E> Service<A> for Connect<A, B, C, E>
 where
     C: HttpMakeConnection<A> + 'static,
     B: HttpBody + Send + 'static,
     B::Item: Send,
     B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
+    E: ConnectExecutor<C::Connection, LiftBody<B>> + Clone,
 {
     type Response = Connection<B>;
     type Error = ConnectError<C::Error>;
-    type Future = ConnectFuture<A, B, C>;
+    type Future = ConnectFuture<A, B, C, E>;
 
     /// Check if the `MakeConnection` is ready for a new connection.
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
@@ -110,20 +151,26 @@ where
     fn call(&mut self, target: A) -> Self::Future {
         let state = State::Connect(self.inner.make_connection(target));
         let builder = self.builder.clone();
+        let exec = self.exec.clone();
 
-        ConnectFuture { state, builder }
+        ConnectFuture {
+            state,
+            builder,
+            exec,
+        }
     }
 }
 
 // ===== impl ConnectFuture =====
 
-impl<A, B, C> Future for ConnectFuture<A, B, C>
+impl<A, B, C, E> Future for ConnectFuture<A, B, C, E>
 where
     C: HttpMakeConnection<A>,
     B: HttpBody + Send + 'static,
     B::Item: Send,
     B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
+    E: ConnectExecutor<C::Connection, LiftBody<B>>,
 {
     type Item = Connection<B>;
     type Error = ConnectError<C::Error>;
@@ -139,8 +186,8 @@ where
                 State::Handshake(ref mut fut) => {
                     let (sender, conn) = try_ready!(fut.poll().map_err(ConnectError::Handshake));
 
-                    let exec = DefaultExecutor::current();
-                    exec.execute(conn.map_err(|e| error!("error with hyper: {}", e)))
+                    self.exec
+                        .spawn(conn.map_err(|e| error!("error with hyper: {}", e)))
                         .map_err(|_| ConnectError::SpawnError)?;
 
                     let connection = Connection::new(sender);
@@ -149,24 +196,20 @@ where
                 }
             };
 
-            let handshake = if let Some(builder) = self.builder.take() {
-                builder.handshake(io)
-            } else {
-                let mut builder = Builder::new();
+            let mut builder = self.builder.clone();
 
-                if Version::HTTP_2 == io.version() {
-                    builder.http2_only(true);
-                }
+            if let Some(Version::HTTP_2) = io.version() {
+                builder.http2_only(true);
+            }
 
-                builder.handshake(io)
-            };
+            let handshake = builder.handshake(io);
 
             self.state = State::Handshake(handshake);
         }
     }
 }
 
-impl<A, B, C> fmt::Debug for ConnectFuture<A, B, C>
+impl<A, B, C, E> fmt::Debug for ConnectFuture<A, B, C, E>
 where
     C: HttpMakeConnection<A>,
     B: HttpBody,

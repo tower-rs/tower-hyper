@@ -5,17 +5,17 @@ authors = ["Lucio Franco <luciofranco14@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-futures = "0.1"
+futures = "0.1.25"
 http = "0.1"
+http-connection = { git = "https://github.com/hyperium/http-connection" }
 log = "0.4"
-hyper = "0.12.21"
+hyper = "0.12.28"
 tokio-io = "0.1"
 tokio-buf = "0.1"
 tokio-executor = "0.1"
 tower-service = "0.2"
 tower = { git = "https://github.com/tower-rs/tower" }
-# tower-http = { git = "https://github.com/tower-rs/tower-http" }
-tower-http = { path = "../tower-http/tower-http" }
+tower-http = { git = "https://github.com/tower-rs/tower-http" }
 
 [dev-dependencies]
 tower-buffer = { git = "https://github.com/tower-rs/tower" }
