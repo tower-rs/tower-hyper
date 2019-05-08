@@ -17,7 +17,7 @@ pub use hyper::client::connect::{Destination, HttpConnector};
 /// # use hyper::client::HttpConnector;
 /// # use tokio_executor::DefaultExecutor;
 /// let connector = Connector::new(HttpConnector::new(1));
-/// let mut hyper = Connect::new(connector, Builder::new());
+/// let mut hyper = Connect::new(connector);
 /// # let hyper: Connect<hyper::client::connect::Destination, Vec<u8>, Connector<HttpConnector>, DefaultExecutor> = hyper;
 /// ```
 #[derive(Debug)]
