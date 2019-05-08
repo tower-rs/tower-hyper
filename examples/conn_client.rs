@@ -1,6 +1,5 @@
 use futures::{future, Future};
 use http::{Request, Uri};
-use hyper::client::conn::Builder;
 use hyper::client::connect::{Destination, HttpConnector};
 use hyper::rt;
 use tokio_buf::util::BufStreamExt;
@@ -16,7 +15,7 @@ fn main() {
     rt::run(future::lazy(|| {
         let dst = Destination::try_from_uri(Uri::from_static("http://127.0.0.1:3000")).unwrap();
         let connector = Connector::new(HttpConnector::new(1));
-        let mut hyper = Connect::new(connector, Builder::new());
+        let mut hyper = Connect::new(connector);
 
         hyper
             .make_service(dst)

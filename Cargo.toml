@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 futures = "0.1.25"
 http = "0.1"
+http-connection = { git = "https://github.com/hyperium/http-connection" }
 log = "0.4"
 hyper = "0.12.28"
 tokio-io = "0.1"
