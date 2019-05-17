@@ -61,15 +61,15 @@ impl HttpBody for Body {
     type Error = hyper::Error;
 
     fn poll_data(&mut self) -> Poll<Option<Self::Data>, Self::Error> {
-        self.inner.poll_data()
+        hyper::body::Payload::poll_data(&mut self.inner)
     }
 
     fn poll_trailers(&mut self) -> Poll<Option<hyper::HeaderMap>, Self::Error> {
-        self.inner.poll_trailers()
+        hyper::body::Payload::poll_trailers(&mut self.inner)
     }
 
     fn is_end_stream(&self) -> bool {
-        self.inner.is_end_stream()
+        hyper::body::Payload::is_end_stream(&self.inner)
     }
 }
 
@@ -78,14 +78,14 @@ impl Payload for Body {
     type Error = hyper::Error;
 
     fn poll_data(&mut self) -> Poll<Option<Self::Data>, Self::Error> {
-        self.inner.poll_data()
+        hyper::body::Payload::poll_data(&mut self.inner)
     }
 
     fn poll_trailers(&mut self) -> Poll<Option<hyper::HeaderMap>, Self::Error> {
-        self.inner.poll_trailers()
+        hyper::body::Payload::poll_trailers(&mut self.inner)
     }
 
     fn is_end_stream(&self) -> bool {
-        self.inner.is_end_stream()
+        hyper::body::Payload::is_end_stream(&self.inner)
     }
 }
