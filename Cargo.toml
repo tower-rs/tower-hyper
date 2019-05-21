@@ -10,7 +10,7 @@ http = "0.1"
 http-body = "0.1"
 http-connection = { git = "https://github.com/hyperium/http-connection" }
 log = "0.4"
-hyper = "0.12.28"
+hyper = "0.12.29"
 tokio-io = "0.1"
 tokio-buf = "0.1"
 tokio-executor = "0.1"
