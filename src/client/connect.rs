@@ -199,7 +199,7 @@ where
 
             let mut builder = self.builder.clone();
 
-            if let Some(Version::HTTP_2) = io.version() {
+            if let Some(Version::HTTP_2) = io.negotiated_version() {
                 builder.http2_only(true);
             }
 
