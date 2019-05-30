@@ -4,7 +4,7 @@ use hyper::rt;
 use std::time::Duration;
 use tokio_buf::util::BufStreamExt;
 use tower::{Service, ServiceBuilder, ServiceExt};
-use tower_http::BodyExt;
+use tower_http_util::body::BodyExt;
 use tower_hyper::client::Client;
 
 fn main() {
