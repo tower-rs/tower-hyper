@@ -101,9 +101,6 @@ impl<T, B> LiftService<T, B> {
     }
 }
 
-// Lift takes in a service on `LiftBody<Body> -> B` (both implement http::Body)
-// and returns a `hyper::Service` which instead takes in `Request<Body>`
-// and outputs `Response<LiftBody<B>>` (which both implement payload).
 impl<T, B> HyperService for LiftService<T, B>
 where
     B: HttpBody + Send + 'static,
