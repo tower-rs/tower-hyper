@@ -1,6 +1,6 @@
-# Tower Hyper
+# tower-hyper
 
-A (WIP) integration between hyper and tower
+A hyper based tower transport layer.
 
 [![Build Status](https://travis-ci.org/tower-rs/tower-hyper.svg?branch=master)](https://travis-ci.org/tower-rs/tower-hyper)
 
@@ -23,9 +23,6 @@ let request = hyper
 	
 hyper::rt::run(request);
 ```
-
-`
-
 ## License
 
 This project is licensed under the MIT license.
