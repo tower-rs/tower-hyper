@@ -13,7 +13,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use tokio_executor::{DefaultExecutor, TypedExecutor};
 use tokio_io::{AsyncRead, AsyncWrite};
-use tower_http_util::HttpMakeConnection;
+use tower_http_util::connection::HttpMakeConnection;
 use tower_service::Service;
 
 /// Creates a `hyper` connection

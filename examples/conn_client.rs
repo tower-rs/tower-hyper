@@ -5,7 +5,7 @@ use hyper::rt;
 use tokio_buf::util::BufStreamExt;
 use tower::MakeService;
 use tower::{Service, ServiceExt};
-use tower_http::BodyExt;
+use tower_http_util::body::BodyExt;
 use tower_hyper::client::Connect;
 use tower_hyper::util::Connector;
 
