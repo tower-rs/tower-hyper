@@ -8,7 +8,7 @@ use hyper::{Request, Response};
 use std::fmt;
 use std::marker::PhantomData;
 use tokio_io::{AsyncRead, AsyncWrite};
-use tower_http_util::HttpService;
+use tower_http_util::service::HttpService;
 use tower_service::Service;
 use tower_util::MakeService;
 
