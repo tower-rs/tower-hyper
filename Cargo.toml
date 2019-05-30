@@ -1,9 +1,24 @@
 [package]
 name = "tower-hyper"
+# When releasing to crates.io:
+# - Remove path dependencies
+# - Update html_root_url.
+# - Update doc url
+#   - Cargo.toml
+#   - README.md
+# - Update CHANGELOG.md.
+# - Create "v0.1.x" git tag.
 version = "0.1.0"
 authors = ["Lucio Franco <luciofranco14@gmail.com>"]
 edition = "2018"
 license = "MIT"
+readme = "README.md"
+documentation = "https://docs.rs/tower-hyper/0.1.0/tower_http_util"
+repository = "https://github.com/tower-rs/tower-hyper"
+homepage = "https://github.com/tower-rs/tower-hyper"
+description = """
+A hyper based tower transport layer.
+"""
 
 [dependencies]
 futures = "0.1.25"
@@ -20,6 +35,7 @@ tower-util = "0.1"
 tower-http-util = "0.1"
 
 [dev-dependencies]
-tower = "0.1"
+tokio = "0.1.0"
+tower = "0.1.0"
 tokio-tcp = "0.1"
 pretty_env_logger = "0.2.0"

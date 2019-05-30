@@ -93,7 +93,7 @@ where
 }
 
 impl<T, B> LiftService<T, B> {
-    pub fn new(inner: T) -> Self {
+    pub(crate) fn new(inner: T) -> Self {
         LiftService {
             inner,
             _pd: PhantomData,

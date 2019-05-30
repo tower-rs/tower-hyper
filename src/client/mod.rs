@@ -4,8 +4,26 @@
 //! and connect. Connection and Connect are designed to be used together
 //! where as Client is a thicker client designed to be used by itself. There
 //! is less control over driving the inner service compared to Connection. The
-//! other difference is that Connection is a lowerlevel connection, so there is no
+//! other difference is that Connection is a lower level connection, so there is no
 //! connection pooling etc, that is the job of the services that wrap it.
+//!
+//! # Client Usage
+//!
+//! [`Connect`] and [`Connection`] is a lower level connection based client. This means that
+//! [`Connect`] provides a [`MakeService`] interface that produces [`Connection`]'s. This
+//! is designed to be used in conjunction with [`tower-http`] and its set of utilities. [`Connect`]
+//! takes a [`MakeConnection`] that is used to provide the underlying transport. This allows one
+//! to create a TLS secured transport for example or use udp.
+//!
+//! [`Client`] just wraps hyper's [`hyper::Client`] and provides a simple [`Service`] interface.
+//!
+//! [`Connect`]: ./struct.Connect.html
+//! [`Connection`]: ./struct.Connection.html
+//! [`MakeService`]: ../../tower-util/trait.MakeService.html
+//! [`Serivce`]: ../../tower_service/trait.Service.html
+//! [`tower-http`]: https://github.com/tower-rs/tower-http
+//! [`Client`]: ./struct.Client.html
+//! [`hyper::Client`]: ../../hyper/struct.Client.html
 
 mod connect;
 mod connection;
