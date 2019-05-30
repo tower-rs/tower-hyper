@@ -20,6 +20,7 @@ tower-util = "0.1"
 tower-http-util = "0.1"
 
 [dev-dependencies]
+tokio = "0.1"
 tower = "0.1"
 tokio-tcp = "0.1"
 pretty_env_logger = "0.2.0"
