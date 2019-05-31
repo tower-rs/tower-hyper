@@ -14,4 +14,4 @@ jobs:
   - ${{ each crate in parameters.crates }}:
     - script: cargo test
       displayName: cargo test -p ${{ crate }}
-      workingDirectory: $(Build.SourcesDirectory)/${{ crate }}
+      workingDirectory: $(Build.SourcesDirectory)
