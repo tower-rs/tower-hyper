@@ -8,7 +8,6 @@ use hyper::body::Payload;
 use hyper::client::conn::{Builder, Connection as HyperConnection, Handshake};
 use hyper::Error;
 use log::error;
-use std::error::Error as StdError;
 use std::fmt;
 use std::marker::PhantomData;
 use tokio_executor::{DefaultExecutor, TypedExecutor};
@@ -240,9 +239,9 @@ where
     }
 }
 
-impl<T> StdError for ConnectError<T>
+impl<T> std::error::Error for ConnectError<T>
 where
-    T: StdError,
+    T: std::error::Error,
 {
     fn description(&self) -> &str {
         match *self {
@@ -252,7 +251,7 @@ where
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&std::error::Error> {
         match *self {
             ConnectError::Connect(ref why) => Some(why),
             ConnectError::Handshake(ref why) => Some(why),
