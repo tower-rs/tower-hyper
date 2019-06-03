@@ -85,7 +85,9 @@ where
 impl<A, B, C> Connect<A, B, C, DefaultExecutor>
 where
     C: HttpMakeConnection<A>,
-    B: HttpBody,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
 {
     /// Create a new `Connect`.
@@ -107,8 +109,11 @@ where
 impl<A, B, C, E> Connect<A, B, C, E>
 where
     C: HttpMakeConnection<A>,
-    B: HttpBody,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
+    E: ConnectExecutor<C::Connection, B> + Clone,
 {
     /// Create a new `Connect`.
     ///
