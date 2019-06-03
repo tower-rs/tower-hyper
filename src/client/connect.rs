@@ -1,17 +1,14 @@
-use super::Connection;
+use super::{Background, Connection};
 use crate::body::LiftBody;
-use futures::{future::MapErr, try_ready, Async, Future, Poll};
+use futures::{try_ready, Async, Future, Poll};
 use http::Version;
 use http_body::Body as HttpBody;
 use http_connection::HttpConnection;
-use hyper::body::Payload;
-use hyper::client::conn::{Builder, Connection as HyperConnection, Handshake};
+use hyper::client::conn::{Builder, Handshake};
 use hyper::Error;
-use log::error;
 use std::fmt;
 use std::marker::PhantomData;
 use tokio_executor::{DefaultExecutor, TypedExecutor};
-use tokio_io::{AsyncRead, AsyncWrite};
 use tower_http_util::connection::HttpMakeConnection;
 use tower_service::Service;
 
@@ -26,15 +23,6 @@ pub struct Connect<A, B, C, E> {
     builder: Builder,
     exec: E,
     _pd: PhantomData<(A, B)>,
-}
-
-/// Executor that will spawn the background connection task.
-pub trait ConnectExecutor<T, B>:
-    TypedExecutor<MapErr<HyperConnection<T, B>, fn(hyper::Error) -> ()>>
-where
-    T: AsyncRead + AsyncWrite + Send + 'static,
-    B: Payload + 'static,
-{
 }
 
 /// The future thre represents the eventual connection
@@ -68,16 +56,6 @@ pub enum ConnectError<T> {
     /// An error occurred attempting to spawn the connect task on the
     /// provided executor.
     SpawnError,
-}
-
-// ==== impl ConnectExecutor ====
-
-impl<E, T, B> ConnectExecutor<T, B> for E
-where
-    T: AsyncRead + AsyncWrite + Send + 'static,
-    B: Payload + 'static,
-    E: TypedExecutor<MapErr<HyperConnection<T, B>, fn(hyper::Error) -> ()>>,
-{
 }
 
 // ===== impl Connect =====
@@ -136,7 +114,7 @@ where
     B::Data: Send,
     B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
-    E: ConnectExecutor<C::Connection, LiftBody<B>> + Clone,
+    E: TypedExecutor<Background<C::Connection, LiftBody<B>>> + Clone,
 {
     type Response = Connection<B>;
     type Error = ConnectError<C::Error>;
@@ -170,7 +148,7 @@ where
     B::Data: Send,
     B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
-    E: ConnectExecutor<C::Connection, LiftBody<B>>,
+    E: TypedExecutor<Background<C::Connection, LiftBody<B>>>,
 {
     type Item = Connection<B>;
     type Error = ConnectError<C::Error>;
@@ -187,7 +165,7 @@ where
                     let (sender, conn) = try_ready!(fut.poll().map_err(ConnectError::Handshake));
 
                     self.exec
-                        .spawn(conn.map_err(|e| error!("error with hyper: {}", e)))
+                        .spawn(Background::new(conn))
                         .map_err(|_| ConnectError::SpawnError)?;
 
                     let connection = Connection::new(sender);

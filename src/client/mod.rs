@@ -25,10 +25,12 @@
 //! [`Client`]: ./struct.Client.html
 //! [`hyper::Client`]: ../../hyper/struct.Client.html
 
+mod background;
 mod connect;
 mod connection;
 mod future;
 
+pub use self::background::Background;
 pub use self::connect::{Connect, ConnectError};
 pub use self::connection::Connection;
 use self::future::ResponseFuture;
