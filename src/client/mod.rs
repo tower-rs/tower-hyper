@@ -31,7 +31,7 @@ mod connection;
 mod future;
 
 pub use self::background::Background;
-pub use self::connect::{Connect, ConnectError};
+pub use self::connect::{Connect, ConnectError, ConnectExecutor};
 pub use self::connection::Connection;
 use self::future::ResponseFuture;
 pub use hyper::client::conn::Builder;

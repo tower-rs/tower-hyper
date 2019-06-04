@@ -4,11 +4,13 @@ use futures::{try_ready, Async, Future, Poll};
 use http::Version;
 use http_body::Body as HttpBody;
 use http_connection::HttpConnection;
+use hyper::body::Payload;
 use hyper::client::conn::{Builder, Handshake};
 use hyper::Error;
 use std::fmt;
 use std::marker::PhantomData;
 use tokio_executor::{DefaultExecutor, TypedExecutor};
+use tokio_io::{AsyncRead, AsyncWrite};
 use tower_http_util::connection::HttpMakeConnection;
 use tower_service::Service;
 
@@ -23,6 +25,14 @@ pub struct Connect<A, B, C, E> {
     builder: Builder,
     exec: E,
     _pd: PhantomData<(A, B)>,
+}
+
+/// Executor that will spawn the background connection task.
+pub trait ConnectExecutor<T, B>: TypedExecutor<Background<T, B>>
+where
+    T: AsyncRead + AsyncWrite + Send + 'static,
+    B: Payload,
+{
 }
 
 /// The future thre represents the eventual connection
@@ -56,6 +66,16 @@ pub enum ConnectError<T> {
     /// An error occurred attempting to spawn the connect task on the
     /// provided executor.
     SpawnError,
+}
+
+// ==== impl ConnectExecutor ====
+
+impl<E, T, B> ConnectExecutor<T, B> for E
+where
+    T: AsyncRead + AsyncWrite + Send + 'static,
+    B: Payload,
+    E: TypedExecutor<Background<T, B>>,
+{
 }
 
 // ===== impl Connect =====
@@ -114,7 +134,7 @@ where
     B::Data: Send,
     B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
-    E: TypedExecutor<Background<C::Connection, LiftBody<B>>> + Clone,
+    E: ConnectExecutor<C::Connection, LiftBody<B>> + Clone,
 {
     type Response = Connection<B>;
     type Error = ConnectError<C::Error>;
@@ -148,7 +168,7 @@ where
     B::Data: Send,
     B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
-    E: TypedExecutor<Background<C::Connection, LiftBody<B>>>,
+    E: ConnectExecutor<C::Connection, LiftBody<B>>,
 {
     type Item = Connection<B>;
     type Error = ConnectError<C::Error>;
