@@ -1,4 +1,4 @@
-use super::{Background, Connection};
+use super::{background::Background, Connection};
 use crate::body::LiftBody;
 use futures::{try_ready, Async, Future, Poll};
 use http::Version;
