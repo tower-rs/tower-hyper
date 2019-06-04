@@ -4,7 +4,6 @@ use futures::{try_ready, Async, Future, Poll};
 use http::Version;
 use http_body::Body as HttpBody;
 use http_connection::HttpConnection;
-use hyper::body::Payload;
 use hyper::client::conn::{Builder, Handshake};
 use hyper::Error;
 use std::fmt;
@@ -28,10 +27,12 @@ pub struct Connect<A, B, C, E> {
 }
 
 /// Executor that will spawn the background connection task.
-pub trait ConnectExecutor<T, B>: TypedExecutor<Background<T, B>>
+pub trait ConnectExecutor<T, B>: TypedExecutor<Background<T, LiftBody<B>>>
 where
     T: AsyncRead + AsyncWrite + Send + 'static,
-    B: Payload,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<crate::Error>,
 {
 }
 
@@ -73,8 +74,10 @@ pub enum ConnectError<T> {
 impl<E, T, B> ConnectExecutor<T, B> for E
 where
     T: AsyncRead + AsyncWrite + Send + 'static,
-    B: Payload,
-    E: TypedExecutor<Background<T, B>>,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<crate::Error>,
+    E: TypedExecutor<Background<T, LiftBody<B>>>,
 {
 }
 
@@ -134,7 +137,7 @@ where
     B::Data: Send,
     B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
-    E: ConnectExecutor<C::Connection, LiftBody<B>> + Clone,
+    E: ConnectExecutor<C::Connection, B> + Clone,
 {
     type Response = Connection<B>;
     type Error = ConnectError<C::Error>;
@@ -168,7 +171,7 @@ where
     B::Data: Send,
     B::Error: Into<crate::Error>,
     C::Connection: Send + 'static,
-    E: ConnectExecutor<C::Connection, LiftBody<B>>,
+    E: ConnectExecutor<C::Connection, B>,
 {
     type Item = Connection<B>;
     type Error = ConnectError<C::Error>;
