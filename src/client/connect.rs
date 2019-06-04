@@ -136,7 +136,7 @@ where
 
 impl<A, B, C, E> Service<A> for Connect<A, B, C, E>
 where
-    C: HttpMakeConnection<A> + 'static,
+    C: HttpMakeConnection<A>,
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<crate::Error>,
