@@ -36,8 +36,7 @@ where
 {
 }
 
-/// The future thre represents the eventual connection
-/// or error
+/// A future that resolves to the eventual connection or an error.
 pub struct ConnectFuture<A, B, C, E>
 where
     B: HttpBody,
