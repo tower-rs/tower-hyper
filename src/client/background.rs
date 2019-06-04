@@ -1,5 +1,6 @@
+use crate::body::LiftBody;
 use futures::{Future, Poll};
-use hyper::body::Payload;
+use http_body::Body as HttpBody;
 use hyper::client::conn::Connection as HyperConnection;
 use log::error;
 use std::fmt::{self, Debug};
@@ -12,17 +13,21 @@ use tokio_io::{AsyncRead, AsyncWrite};
 pub struct Background<T, B>
 where
     T: AsyncRead + AsyncWrite + Send + 'static,
-    B: Payload,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<crate::Error>,
 {
-    connection: HyperConnection<T, B>,
+    connection: HyperConnection<T, LiftBody<B>>,
 }
 
 impl<T, B> Background<T, B>
 where
     T: AsyncRead + AsyncWrite + Send + 'static,
-    B: Payload,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<crate::Error>,
 {
-    pub(super) fn new(connection: HyperConnection<T, B>) -> Self {
+    pub(super) fn new(connection: HyperConnection<T, LiftBody<B>>) -> Self {
         Background { connection }
     }
 }
@@ -30,7 +35,9 @@ where
 impl<T, B> Future for Background<T, B>
 where
     T: AsyncRead + AsyncWrite + Send + 'static,
-    B: Payload,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<crate::Error>,
 {
     type Item = ();
     type Error = ();
@@ -45,7 +52,9 @@ where
 impl<T, B> Debug for Background<T, B>
 where
     T: Debug + AsyncRead + AsyncWrite + Send + 'static,
-    B: Payload,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<crate::Error>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Background")

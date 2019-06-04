@@ -27,7 +27,7 @@ pub struct Connect<A, B, C, E> {
 }
 
 /// Executor that will spawn the background connection task.
-pub trait ConnectExecutor<T, B>: TypedExecutor<Background<T, LiftBody<B>>>
+pub trait ConnectExecutor<T, B>: TypedExecutor<Background<T, B>>
 where
     T: AsyncRead + AsyncWrite + Send + 'static,
     B: HttpBody + Send + 'static,
@@ -77,7 +77,7 @@ where
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<crate::Error>,
-    E: TypedExecutor<Background<T, LiftBody<B>>>,
+    E: TypedExecutor<Background<T, B>>,
 {
 }
 
