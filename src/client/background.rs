@@ -1,10 +1,9 @@
 use futures::{Future, Poll};
 use hyper::body::Payload;
 use hyper::client::conn::Connection as HyperConnection;
+use log::error;
 use std::fmt::{self, Debug};
 use tokio_io::{AsyncRead, AsyncWrite};
-
-use log::error;
 
 /// Background task for a client connection.
 ///
@@ -16,18 +15,6 @@ where
     B: Payload,
 {
     connection: HyperConnection<T, B>,
-}
-
-impl<T, B> Debug for Background<T, B>
-where
-    T: Debug + AsyncRead + AsyncWrite + Send + 'static,
-    B: Payload,
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Background")
-            .field("connection", &self.connection)
-            .finish()
-    }
 }
 
 impl<T, B> Background<T, B>
@@ -52,5 +39,17 @@ where
         self.connection.poll().map_err(|e| {
             error!("error with hyper: {}", e);
         })
+    }
+}
+
+impl<T, B> Debug for Background<T, B>
+where
+    T: Debug + AsyncRead + AsyncWrite + Send + 'static,
+    B: Payload,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Background")
+            .field("connection", &self.connection)
+            .finish()
     }
 }
