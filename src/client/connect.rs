@@ -186,11 +186,10 @@ where
                 State::Handshake(ref mut fut) => {
                     let (sender, conn) = try_ready!(fut.poll().map_err(ConnectError::Handshake));
 
-                    self.exec
-                        .spawn(Background::new(conn))
-                        .map_err(|_| ConnectError::SpawnError)?;
+                    let (bg, handle) = Background::new(conn);
+                    self.exec.spawn(bg).map_err(|_| ConnectError::SpawnError)?;
 
-                    let connection = Connection::new(sender);
+                    let connection = Connection::new(sender, handle);
 
                     return Ok(Async::Ready(connection));
                 }
