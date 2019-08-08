@@ -31,10 +31,7 @@ pub(super) struct Handle {
 
 impl Handle {
     pub(super) fn get_error(&self) -> Option<hyper::Error> {
-        self.error
-            .try_lock()
-            .ok()
-            .and_then(|mut err| err.take())
+        self.error.try_lock().ok().and_then(|mut err| err.take())
     }
 }
 
