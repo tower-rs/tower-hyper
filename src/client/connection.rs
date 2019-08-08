@@ -1,3 +1,4 @@
+use super::background::Handle;
 use super::ResponseFuture;
 use crate::body::{Body, LiftBody};
 use futures::Poll;
@@ -17,14 +18,15 @@ where
     B: HttpBody,
 {
     sender: conn::SendRequest<LiftBody<B>>,
+    handle: Handle,
 }
 
 impl<B> Connection<B>
 where
     B: HttpBody,
 {
-    pub(super) fn new(sender: conn::SendRequest<LiftBody<B>>) -> Self {
-        Connection { sender }
+    pub(super) fn new(sender: conn::SendRequest<LiftBody<B>>, handle: Handle) -> Self {
+        Connection { sender, handle }
     }
 }
 
@@ -39,6 +41,9 @@ where
     type Future = ResponseFuture<conn::ResponseFuture>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        if let Some(e) = self.handle.get_error() {
+            return Err(e);
+        }
         self.sender.poll_ready()
     }
 
