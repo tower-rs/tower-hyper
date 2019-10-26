@@ -68,7 +68,7 @@ where
             // serverity to debug.
             debug!("error with hyper: {}", e);
             if let Ok(mut l) = self.handle.error.try_lock() {
-                *l = Some(e.into());
+                *l = Some(e);
             }
         })
     }

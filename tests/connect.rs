@@ -72,7 +72,7 @@ struct Stream(TcpStream);
 impl Service<SocketAddr> for Http2 {
     type Response = Stream;
     type Error = std::io::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error> + Send + 'static>;
+    type Future = Box<dyn Future<Item = Self::Response, Error = Self::Error> + Send + 'static>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         Ok(().into())

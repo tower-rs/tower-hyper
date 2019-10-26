@@ -15,7 +15,7 @@ use tower_util::MakeService;
 pub use hyper::server::conn::Http;
 
 /// A stream mapping incoming IOs to new services.
-pub type Serve<E> = Box<Future<Item = (), Error = Error<E>> + Send + 'static>;
+pub type Serve<E> = Box<dyn Future<Item = (), Error = Error<E>> + Send + 'static>;
 
 /// Server implemenation for hyper
 #[derive(Debug)]

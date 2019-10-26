@@ -70,6 +70,17 @@ impl<C, B> Clone for Client<C, B> {
     }
 }
 
+impl<B> Default for Client<HttpConnector, B>
+where
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<crate::Error>,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<B> Client<HttpConnector, B>
 where
     B: HttpBody + Send + 'static,
