@@ -43,15 +43,42 @@ use hyper::{
     client::{self, HttpConnector},
     Request, Response,
 };
+use std::fmt;
 use tower_service::Service;
 
 /// The client wrapp for `hyper::Client`
 ///
 /// The generics `C` and `B` are 1-1 with the generic
 /// types within `hyper::Client`.
-#[derive(Clone, Debug)]
 pub struct Client<C, B> {
     inner: hyper::Client<C, LiftBody<B>>,
+}
+
+impl<C, B> fmt::Debug for Client<C, B> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Client")
+            .field("inner", &self.inner)
+            .finish()
+    }
+}
+
+impl<C, B> Clone for Client<C, B> {
+    fn clone(&self) -> Client<C, B> {
+        Client {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
+impl<B> Default for Client<HttpConnector, B>
+where
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<crate::Error>,
+{
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<B> Client<HttpConnector, B>
