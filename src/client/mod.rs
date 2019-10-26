@@ -56,7 +56,9 @@ pub struct Client<C, B> {
 
 impl<C, B> fmt::Debug for Client<C, B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Client").field("inner", self.inner).finish()
+        f.debug_struct("Client")
+            .field("inner", &self.inner)
+            .finish()
     }
 }
 
